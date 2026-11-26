@@ -22,10 +22,18 @@ class DiscCheck:
     region: Optional[str] = None
     serial: Optional[str] = None
     sbi: str = "none"             # none | ok | missing | invalid
-    message: str = ""
+    message: str = ""             # English, for logs
+    code: str = ""                # translated by the UI (ui/i18n.js: msg.<code>)
+    args: dict = None             # values for the message
+
+    def fail(self, code: str, message: str, **args) -> "DiscCheck":
+        self.ok, self.code, self.message, self.args = False, code, message, args
+        return self
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d["args"] = d["args"] or {}
+        return d
 
 
 def parse_cue(cue: Path) -> list[Path]:
@@ -94,14 +102,14 @@ def identify(cue_path: str) -> DiscCheck:
     """Quick check (no hashing): which game is this?"""
     cue = Path(cue_path)
     if cue.suffix.lower() != ".cue":
-        return DiscCheck(cue_path, False, message="Bitte die .cue-Datei des Images wählen.")
+        return DiscCheck(cue_path, False).fail("disc.need_cue", "Please choose the image's .cue file.")
     if not cue.exists():
-        return DiscCheck(cue_path, False, message="Datei nicht gefunden.")
+        return DiscCheck(cue_path, False).fail("disc.not_found", "File not found.")
     bins = parse_cue(cue)
     if len(bins) != 1:
-        return DiscCheck(cue_path, False, message="Unerwartetes Image-Format (genau eine .bin erwartet).")
+        return DiscCheck(cue_path, False).fail("disc.format", "Unexpected image format (exactly one .bin expected).")
     if not bins[0].exists():
-        return DiscCheck(cue_path, False, message=f"Die .bin-Datei fehlt: {bins[0].name}")
+        return DiscCheck(cue_path, False).fail("disc.bin_missing", f"The .bin file is missing: {bins[0].name}", name=bins[0].name)
     serial = boot_serial(bins[0])
     for g in GAMES:
         for v in g.versions:
@@ -111,9 +119,9 @@ def identify(cue_path: str) -> DiscCheck:
                     chk.sbi = sbi_status(cue)
                 return chk
     if serial:
-        return DiscCheck(cue_path, False, serial=serial,
-                         message=f"Dieses Spiel ({serial}) wird nicht unterstützt.")
-    return DiscCheck(cue_path, False, message="Kein PlayStation-Image erkannt.")
+        return DiscCheck(cue_path, False, serial=serial).fail(
+            "disc.unsupported", f"This game ({serial}) is not supported.", serial=serial)
+    return DiscCheck(cue_path, False).fail("disc.not_psx", "No PlayStation image detected.")
 
 
 def verify(chk: DiscCheck, progress: Callable[[float], None] | None = None) -> DiscCheck:
@@ -125,9 +133,7 @@ def verify(chk: DiscCheck, progress: Callable[[float], None] | None = None) -> D
     bin_path = parse_cue(Path(chk.path))[0]
     size = bin_path.stat().st_size
     if size != version.bin_size:
-        chk.ok = False
-        chk.message = "Das Image hat eine andere Größe als die bekannte Version (beschädigt oder anderer Dump)."
-        return chk
+        return chk.fail("disc.size", "The image size differs from the known version (damaged or different dump).")
     h = hashlib.sha1()
     done = 0
     with open(bin_path, "rb") as f:
@@ -140,15 +146,11 @@ def verify(chk: DiscCheck, progress: Callable[[float], None] | None = None) -> D
             if progress:
                 progress(done / size)
     if h.hexdigest() != version.bin_sha1:
-        chk.ok = False
-        chk.message = "Prüfsumme stimmt nicht – das Image ist beschädigt oder eine andere Version."
-        return chk
+        return chk.fail("disc.hash", "Checksum mismatch: the image is damaged or a different version.")
     if version.needs_sbi and chk.sbi != "ok":
-        chk.ok = False
-        chk.message = ("Die .sbi-Datei (Kopierschutzdaten) fehlt oder ist ungültig. Sie muss neben der .cue "
-                       "liegen und denselben Namen haben.")
-        return chk
-    chk.message = "Image geprüft"
+        return chk.fail("disc.sbi", "The .sbi file (copy-protection data) is missing or invalid. It must sit "
+                        "next to the .cue with the same name.")
+    chk.message, chk.code = "Image verified", "disc.verified"
     return chk
 
 

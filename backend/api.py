@@ -11,7 +11,7 @@ from typing import Any, Optional
 from . import builder, discs, settings, tools
 from .catalog import GAMES, GAMES_BY_ID
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 class Api:
@@ -46,6 +46,21 @@ class Api:
             "platform": "windows" if tools.IS_WINDOWS else "linux",
             "settings_schema": settings.SCHEMA,
         }
+
+    # ------------------------------------------------------------ prefs
+    def get_prefs(self) -> dict:
+        import json
+        try:
+            return json.loads((tools.data_dir() / "app.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+
+    def set_pref(self, key: str, value: Any) -> dict:
+        import json
+        prefs = self.get_prefs()
+        prefs[key] = value
+        (tools.data_dir() / "app.json").write_text(json.dumps(prefs, indent=2), encoding="utf-8")
+        return prefs
 
     # ------------------------------------------------------------- discs
     def pick_images(self) -> list[dict]:
@@ -87,13 +102,12 @@ class Api:
         g = GAMES_BY_ID[game_id]
         exe = builder.product_exe(g)
         if not exe.exists():
-            return {"ok": False, "message": "Spiel ist nicht eingerichtet."}
+            return {"ok": False, "code": "launch.not_installed"}
         if self._is_running(game_id):
-            return {"ok": False, "message": "Das Spiel läuft bereits."}
+            return {"ok": False, "code": "launch.running"}
         disc = settings.disc_path(g)
         if disc and not Path(disc).exists():
-            return {"ok": False, "message": "Das Image wurde verschoben oder gelöscht. Bitte unter "
-                                            "„Einrichten“ neu auswählen.", "disc_missing": True}
+            return {"ok": False, "code": "launch.disc_missing", "disc_missing": True}
         self._spawn(game_id, [str(exe), "--no-launcher"], exe.parent)
         return {"ok": True}
 

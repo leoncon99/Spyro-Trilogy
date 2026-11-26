@@ -26,69 +26,68 @@
     <svg class="brand-gem"><use href="#gem"/></svg>
     <span class="brand-name">Spyro Trilogy</span>
   </div>
-  <nav class="topnav" aria-label="Hauptnavigation">
-    <button class="navbtn" data-view="library" aria-current="page">Bibliothek</button>
-    <button class="navbtn" data-view="setup">Einrichten</button>
+  <div class="topbar-right">
+  <nav class="topnav">
+    <button class="navbtn" data-view="library" aria-current="page" data-i18n="nav.library"></button>
+    <button class="navbtn" data-view="setup" data-i18n="nav.setup"></button>
   </nav>
+  <label class="langpick"><span class="sr" data-i18n="lang.label"></span><select id="lang"></select></label>
+  </div>
 </header>
 
 <main>
   <!-- ======================= LIBRARY ======================= -->
-  <section id="view-library" class="view" aria-label="Bibliothek">
+  <section id="view-library" class="view" data-i18n-aria="nav.library">
     <div class="worlds" id="worlds"></div>
-    <p class="hint" id="pad-hint">Steuerung: ← → wählen · Enter spielen · E Einstellungen</p>
+    <p class="hint" id="pad-hint"></p>
   </section>
 
   <!-- ======================= SETUP ======================= -->
-  <section id="view-setup" class="view" hidden aria-label="Einrichten">
-    <ol class="steps" aria-label="Fortschritt">
-      <li data-step="1">Images wählen</li>
-      <li data-step="2">Spiele bauen</li>
-      <li data-step="3">Fertig</li>
+  <section id="view-setup" class="view" hidden data-i18n-aria="nav.setup">
+    <ol class="steps" >
+      <li data-step="1" data-i18n="step.1"></li>
+      <li data-step="2" data-i18n="step.2"></li>
+      <li data-step="3" data-i18n="step.3"></li>
     </ol>
 
     <div class="step-panel" data-panel="1">
-      <h1 class="setup-title">Aus deinen eigenen Discs werden PC-Spiele</h1>
-      <p class="lede">Wähle die Images deiner Spyro-Discs (PAL, als <code>.cue</code> + <code>.bin</code>).
-        Die Spiele werden daraus direkt auf diesem PC übersetzt und gebaut – es wird nichts vom Spiel
-        heruntergeladen. Bei Spyro 2 und 3 muss die <code>.sbi</code>-Datei neben dem Image liegen.</p>
+      <h1 class="setup-title" data-i18n="setup.title"></h1>
+      <p class="lede" data-i18n-html="setup.lede"></p>
       <div class="pickers">
-        <button class="btn btn-gold" id="btn-pick">Images auswählen …</button>
-        <button class="btn btn-ghost" id="btn-scan">Ordner durchsuchen …</button>
+        <button class="btn btn-gold" id="btn-pick" data-i18n="setup.pick"></button>
+        <button class="btn btn-ghost" id="btn-scan" data-i18n="setup.scan"></button>
         <form class="pathform" id="pathform">
-          <label for="pathinput" class="sr">Pfad zu einer .cue-Datei oder einem Ordner</label>
-          <input id="pathinput" placeholder="oder Pfad einfügen: …\Spyro 2.cue oder Ordner" autocomplete="off">
-          <button class="btn btn-ghost" type="submit">Hinzufügen</button>
+          <input id="pathinput" data-i18n-placeholder="setup.path" data-i18n-aria="setup.path" autocomplete="off">
+          <button class="btn btn-ghost" type="submit" data-i18n="setup.add"></button>
         </form>
       </div>
       <div class="slots" id="slots"></div>
       <footer class="setup-foot">
         <p class="small" id="space-note"></p>
-        <button class="btn btn-gold btn-lg" id="btn-build" disabled>Spiele bauen</button>
+        <button class="btn btn-gold btn-lg" id="btn-build" disabled></button>
       </footer>
     </div>
 
     <div class="step-panel" data-panel="2" hidden>
-      <h1 class="setup-title">Spiele werden gebaut</h1>
-      <p class="lede">Das dauert je Spiel etwa 5–15 Minuten. Du kannst das Fenster offen lassen und
-        nebenbei etwas anderes machen.</p>
+      <h1 class="setup-title" data-i18n="build.title"></h1>
+      <p class="lede" data-i18n="build.lede"></p>
       <div class="toolbar-progress" id="tools-progress">
-        <div class="tp-label"><span>Werkzeuge</span><span id="tools-label"></span></div>
+        <div class="tp-label"><span data-i18n="build.tools"></span><span id="tools-label"></span></div>
         <div class="bar"><i id="tools-bar"></i></div>
       </div>
       <div class="jobs" id="jobs"></div>
       <footer class="setup-foot">
         <span></span>
-        <button class="btn btn-ghost" id="btn-cancel">Abbrechen</button>
+        <button class="btn btn-ghost" id="btn-cancel" data-i18n="build.cancel"></button>
       </footer>
     </div>
 
     <div class="step-panel" data-panel="3" hidden>
-      <h1 class="setup-title" id="done-title">Fertig</h1>
+      <h1 class="setup-title" id="done-title"></h1>
       <div class="done-list" id="done-list"></div>
       <footer class="setup-foot">
-        <button class="btn btn-ghost" id="btn-again">Weitere Spiele einrichten</button>
-        <button class="btn btn-gold btn-lg" id="btn-to-library">Zur Bibliothek</button>
+        <button class="btn btn-ghost" id="btn-again" data-i18n="done.again"></button>
+        <button class="btn btn-gold btn-lg" id="btn-to-library" data-i18n="done.library"></button>
       </footer>
     </div>
   </section>
@@ -101,22 +100,22 @@
     <header class="sheet-head">
       <svg class="sheet-gem"><use href="#gem"/></svg>
       <div>
-        <h2 id="sheet-title">Einstellungen</h2>
+        <h2 id="sheet-title"></h2>
         <p class="small" id="sheet-sub"></p>
       </div>
-      <button class="iconbtn" data-close aria-label="Schließen">✕</button>
+      <button class="iconbtn" data-close data-i18n-aria="sheet.close">✕</button>
     </header>
     <div class="sheet-content" id="sheet-content"></div>
     <footer class="sheet-foot">
       <div class="sheet-actions">
-        <button class="btn btn-ghost" id="btn-advanced">Steuerung &amp; mehr …</button>
-        <button class="btn btn-ghost" id="btn-saves">Spielstände öffnen</button>
-        <button class="btn btn-ghost" id="btn-all">Für alle Spiele übernehmen</button>
+        <button class="btn btn-ghost" id="btn-advanced" data-i18n="sheet.advanced"></button>
+        <button class="btn btn-ghost" id="btn-saves" data-i18n="sheet.saves"></button>
+        <button class="btn btn-ghost" id="btn-all" data-i18n="sheet.all"></button>
       </div>
       <div class="sheet-actions danger">
-        <button class="btn btn-text" id="btn-reset">Standard wiederherstellen</button>
-        <button class="btn btn-text" id="btn-rebuild">Neu bauen</button>
-        <button class="btn btn-text" id="btn-remove">Entfernen</button>
+        <button class="btn btn-text" id="btn-reset" data-i18n="sheet.reset"></button>
+        <button class="btn btn-text" id="btn-rebuild" data-i18n="sheet.rebuild"></button>
+        <button class="btn btn-text" id="btn-remove" data-i18n="sheet.remove"></button>
       </div>
     </footer>
   </div>
@@ -127,7 +126,7 @@
     <h2 id="modal-title"></h2>
     <p id="modal-text"></p>
     <div class="modal-actions">
-      <button class="btn btn-ghost" id="modal-no">Abbrechen</button>
+      <button class="btn btn-ghost" id="modal-no" data-i18n="modal.cancel"></button>
       <button class="btn btn-gold" id="modal-yes"></button>
     </div>
   </div>
@@ -135,6 +134,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

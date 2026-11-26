@@ -23,6 +23,19 @@ const fileLabel = (p) => {
 };
 const gem = (cls = "slot-gem") => `<svg class="${cls}" aria-hidden="true"><use href="#gem"/></svg>`;
 
+const num = (x) => Number(x).toLocaleString(LANG, { maximumFractionDigits: 1 });
+/* Backend message code -> text in the current language. */
+function msgText(code, args, fallback) {
+  if (!code) return fallback || "";
+  const key = code.startsWith("msg.") || code.startsWith("err.") || code.startsWith("d.") ? code : "msg." + code;
+  return tt(key, args || {}, fallback || code);
+}
+function jobLine(j) {
+  const stage = t("stage." + j.stage) || "";
+  const detail = j.detail ? msgText(j.detail, j.detail_args) : "";
+  return detail && detail !== stage ? `${stage} – ${detail}` : stage;
+}
+
 const S = {
   state: null,
   view: "library",
@@ -37,6 +50,8 @@ const S = {
 /* ------------------------------------------------------------------ boot */
 let wired = false;
 async function boot() {
+  const prefs = (await api.get_prefs()) || {};
+  setLang(pickLang(prefs.lang), false);
   if (!wired) { wireStatic(); wired = true; }
   await refresh();
   const any = S.state.games.some((g) => g.installed);
@@ -94,10 +109,9 @@ function renderLibrary() {
             <svg style="--g1:#b8ffe8;--g2:#33c9a0;--g3:#137a68"><use href="#gem"/></svg>
             <svg style="--g1:#eadcff;--g2:#b086ff;--g3:#5d38b0"><use href="#gem"/></svg>
           </div>
-          <h1>Noch keine Spiele eingerichtet</h1>
-          <p>Wähle die Images deiner eigenen Spyro-Discs. Daraus werden auf diesem PC native Spiele gebaut –
-             mit höherer Auflösung, Vollbild und Controller-Unterstützung.</p>
-          <button class="btn btn-gold btn-lg" data-go-setup>Einrichtung starten</button>
+          <h1>${esc(t("lib.empty.title"))}</h1>
+          <p>${esc(t("lib.empty.text"))}</p>
+          <button class="btn btn-gold btn-lg" data-go-setup>${esc(t("lib.empty.start"))}</button>
         </div>
       </div>`));
     $("[data-go-setup]", box).onclick = () => show("setup");
@@ -113,7 +127,7 @@ function renderLibrary() {
         <span class="numeral" aria-hidden="true">${g.number}</span>
         <div class="gem">${gem("")}</div>
         <h2>${esc(g.title)}</h2>
-        <p class="meta">${esc(g.subtitle)}, ${g.year}</p>
+        <p class="meta">${esc(tt("game." + g.id + ".sub", {}, g.subtitle))}, ${g.year}</p>
         <div class="row"></div>
       </article>`);
     el.addEventListener("mouseenter", () => setActive(i));
@@ -129,24 +143,24 @@ function updateLibraryStatus() {
   $$(".world").forEach((el) => {
     const g = S.state.games.find((x) => x.id === el.dataset.game);
     const row = $(".row", el);
-    const key = JSON.stringify([g.installed, g.running, g.disc_missing, S.state.build.running]);
+    const key = JSON.stringify([g.installed, g.running, g.disc_missing, S.state.build.running, LANG]);
     if (row.dataset.key === key) return;
     row.dataset.key = key;
     row.innerHTML = "";
     if (!g.installed) {
-      const b = h(`<button class="btn btn-ghost">Einrichten</button>`);
+      const b = h(`<button class="btn btn-ghost">${esc(t("lib.setup"))}</button>`);
       b.onclick = () => { show("setup"); };
-      row.append(b, h(`<span class="status">Noch nicht eingerichtet</span>`));
+      row.append(b, h(`<span class="status">${esc(t("lib.not_installed"))}</span>`));
       row.querySelector(".btn").style.display = "inline-block";
       return;
     }
-    const play = h(`<button class="btn btn-gold btn-lg">${g.running ? "Läuft …" : "Spielen"}</button>`);
+    const play = h(`<button class="btn btn-gold btn-lg">${esc(t(g.running ? "lib.running" : "lib.play"))}</button>`);
     play.disabled = g.running;
     play.onclick = () => launch(g.id);
-    const set = h(`<button class="btn btn-ghost">Einstellungen</button>`);
+    const set = h(`<button class="btn btn-ghost">${esc(t("lib.settings"))}</button>`);
     set.onclick = () => openSheet(g.id);
     row.append(play, set);
-    if (g.disc_missing) row.append(h(`<span class="status warn">Image nicht gefunden – bitte neu einrichten</span>`));
+    if (g.disc_missing) row.append(h(`<span class="status warn">${esc(t("lib.disc_missing"))}</span>`));
   });
 }
 
@@ -157,8 +171,8 @@ function setActive(i) {
 
 async function launch(id) {
   const r = await api.launch(id);
-  if (!r.ok) return toast(r.message);
-  toast("Viel Spaß! Menü im Spiel: F10 oder Select + L3");
+  if (!r.ok) return toast(tt(r.code, {}, r.message || r.code));
+  toast(t("lib.launched"));
   setTimeout(refresh, 600);
 }
 
@@ -185,14 +199,14 @@ function renderSlots() {
     const pick = S.picks[g.id];
     let check = "", ready = false;
     if (pick) {
-      if (!pick.ok) check = `<p class="check bad">${esc(pick.message)}</p>`;
-      else if (pick.sbi === "missing") check = `<p class="check bad">.sbi-Datei fehlt neben dem Image</p>`;
-      else if (pick.sbi === "invalid") check = `<p class="check bad">.sbi-Datei ist ungültig</p>`;
-      else { check = `<p class="check ok">Erkannt: ${esc(pick.region)}-Version ${esc(pick.serial)}${pick.sbi === "ok" ? ", Kopierschutzdaten ok" : ""}</p>`; ready = true; }
+      if (!pick.ok) check = `<p class="check bad">${esc(msgText(pick.code, pick.args, pick.message))}</p>`;
+      else if (pick.sbi === "missing") check = `<p class="check bad">${esc(t("slot.sbi_missing"))}</p>`;
+      else if (pick.sbi === "invalid") check = `<p class="check bad">${esc(t("slot.sbi_invalid"))}</p>`;
+      else { check = `<p class="check ok">${esc(t(pick.sbi === "ok" ? "slot.detected_sbi" : "slot.detected", pick))}</p>`; ready = true; }
     } else if (g.installed) {
-      check = `<p class="check info">Bereits eingerichtet. Zum Neu-Bauen ein Image wählen.</p>`;
+      check = `<p class="check info">${esc(t("slot.installed"))}</p>`;
     } else {
-      check = `<p class="check info">Kein Image gewählt</p>`;
+      check = `<p class="check info">${esc(t("slot.none"))}</p>`;
     }
     if (!ready) S.include[g.id] = false;
     else if (S.include[g.id] === undefined) S.include[g.id] = true;
@@ -203,7 +217,7 @@ function renderSlots() {
         <p class="file">${pick ? fileLabel(pick.path) : ""}</p>
         ${check}
         <label class="include"><input type="checkbox" ${S.include[g.id] ? "checked" : ""} ${ready ? "" : "disabled"}>
-          ${g.installed ? "Neu bauen" : "Bauen"}</label>
+          ${esc(t(g.installed ? "slot.rebuild" : "slot.build"))}</label>
       </div>`);
     $("input", el).onchange = (e) => { S.include[g.id] = e.target.checked; renderSlots(); };
     box.append(el);
@@ -211,11 +225,11 @@ function renderSlots() {
   const n = Object.values(S.include).filter(Boolean).length;
   const btn = $("#btn-build");
   btn.disabled = n === 0 || S.state.build.running;
-  btn.textContent = n > 1 ? `${n} Spiele bauen` : n === 1 ? "Spiel bauen" : "Spiele bauen";
+  btn.textContent = t(n > 1 ? "setup.build_n" : n === 1 ? "setup.build_1" : "setup.build_0", { n });
   const need = n * 1.2;
   $("#space-note").textContent = n
-    ? `Benötigt etwa ${need.toFixed(1).replace(".", ",")} GB während des Bauens. Frei: ${String(S.state.free_gb).replace(".", ",")} GB.`
-    : "Beim ersten Bauen werden einmalig Werkzeuge geladen (ca. 400 MB).";
+    ? t("setup.space", { need: num(need), free: num(S.state.free_gb) })
+    : t("setup.first_tools");
 }
 
 function addPicks(list) {
@@ -225,15 +239,15 @@ function addPicks(list) {
     else unknown++;
   }
   renderSlots();
-  if (!list.length) toast("Keine passenden Images gefunden.");
-  else if (unknown && !added) toast(list[0].message || "Image nicht erkannt.");
+  if (!list.length) toast(t("setup.none_found"));
+  else if (unknown && !added) toast(msgText(list[0].code, list[0].args, list[0].message));
 }
 
 async function startBuild() {
   const sel = {};
   for (const [id, on] of Object.entries(S.include)) if (on && S.picks[id]) sel[id] = S.picks[id].path;
   const ok = await api.start_build(sel);
-  if (!ok) return toast("Der Bau konnte nicht gestartet werden.");
+  if (!ok) return toast(t("err.generic", { detail: "start_build" }));
   S.wasRunning = true;
   gotoStep(2);
   $("#jobs").innerHTML = "";
@@ -242,7 +256,7 @@ async function startBuild() {
 
 function renderJobs() {
   const b = S.state.build;
-  $("#tools-label").textContent = b.tools.label || "";
+  $("#tools-label").textContent = b.tools.code ? tt(b.tools.code, b.tools.args, "") : "";
   $("#tools-bar").style.width = (b.tools.progress * 100).toFixed(1) + "%";
   $("#tools-progress").hidden = b.tools.progress >= 1;
   const box = $("#jobs");
@@ -256,18 +270,17 @@ function renderJobs() {
           <h3>${esc(g.title)}</h3><span class="pct"></span>
           <div class="bar"><i></i></div>
           <p class="detail small"></p>
-          <details><summary>Protokoll</summary><pre></pre></details>
+          <details><summary>${esc(t("build.log"))}</summary><pre></pre></details>
         </div>`);
       box.append(el);
     }
     el.classList.toggle("is-error", j.status === "error");
     el.classList.toggle("is-done", j.status === "done");
     const pct = Math.round(j.progress * 100);
-    $(".pct", el).textContent = j.status === "done" ? "Fertig" : j.status === "error" ? "Fehler"
-      : j.status === "queued" ? "Wartet" : j.status === "cancelled" ? "Abgebrochen" : pct + " %";
+    $(".pct", el).textContent = j.status === "running" ? pct + " %" : t("job." + j.status) || pct + " %";
     $(".bar i", el).style.width = (j.status === "done" ? 100 : pct) + "%";
-    $(".detail", el).textContent = j.status === "error" ? j.error
-      : j.status === "running" ? `${j.stage_label}${j.detail ? " – " + j.detail : ""}` : "";
+    $(".detail", el).textContent = j.status === "error" ? msgText(j.error, j.error_args)
+      : j.status === "running" ? jobLine(j) : "";
     const pre = $("pre", el);
     if ($("details", el).open) pre.textContent = j.log_tail.join("\n");
   }
@@ -275,11 +288,15 @@ function renderJobs() {
 }
 
 function finishBuild() {
+  finishBuildTexts();
+  S.picks = {}; S.include = {};
+  gotoStep(3);
+}
+function finishBuildTexts() {
   const jobs = S.state.build.jobs;
   const okN = jobs.filter((j) => j.status === "done").length;
-  $("#done-title").textContent = okN === jobs.length
-    ? (okN === 1 ? "Das Spiel ist bereit" : "Deine Spiele sind bereit")
-    : okN ? "Teilweise fertig" : "Das Bauen ist fehlgeschlagen";
+  $("#done-title").textContent = t(okN === jobs.length ? (okN === 1 ? "done.all_1" : "done.all_n")
+    : okN ? "done.some" : "done.none");
   const box = $("#done-list");
   box.innerHTML = "";
   for (const j of jobs) {
@@ -288,12 +305,10 @@ function finishBuild() {
       <div class="done-item job" data-game="${j.game_id}" style="display:flex">
         ${gem()}
         <div><p><strong>${esc(g.title)}</strong></p>
-        ${j.status === "done" ? `<p class="small">Fertig gebaut und bereit zum Spielen.</p>`
-          : `<p class="err">${esc(j.error || (j.status === "cancelled" ? "Abgebrochen." : "Nicht gebaut."))}</p>`}</div>
+        ${j.status === "done" ? `<p class="small">${esc(t("done.ok"))}</p>`
+          : `<p class="err">${esc(j.error ? msgText(j.error, j.error_args) : t(j.status === "cancelled" ? "done.cancelled" : "done.skipped"))}</p>`}</div>
       </div>`));
   }
-  S.picks = {}; S.include = {};
-  gotoStep(3);
 }
 
 /* ------------------------------------------------------------------ settings sheet */
@@ -302,7 +317,7 @@ async function openSheet(id) {
   S.sheetGame = id;
   $("#sheet .sheet-body").dataset.game = id;
   $("#sheet-title").textContent = g.title;
-  $("#sheet-sub").textContent = g.info ? `${g.info.region}-Version, gebaut am ${g.info.built}` : "";
+  $("#sheet-sub").textContent = g.info ? t("sheet.sub", g.info) : "";
   const values = await api.get_settings(id);
   renderSettings(values);
   $("#sheet").hidden = false;
@@ -314,13 +329,13 @@ function renderSettings(values) {
   box.innerHTML = "";
   let group = null;
   for (const s of S.state.settings_schema) {
-    if (s.group !== group) { group = s.group; box.append(h(`<h3>${esc(group)}</h3>`)); }
+    if (s.group !== group) { group = s.group; box.append(h(`<h3>${esc(tt("grp." + group, {}, group))}</h3>`)); }
     const v = values[s.id];
     const fid = "set-" + s.id;
     let control;
     if (s.kind === "choice") {
       control = h(`<select id="${fid}">${s.choices.map(([val, lab]) =>
-        `<option value="${esc(val)}" ${String(val) === String(v) ? "selected" : ""}>${esc(lab)}</option>`).join("")}</select>`);
+        `<option value="${esc(val)}" ${String(val) === String(v) ? "selected" : ""}>${esc(tt(`set.${s.id}.${val}`, {}, lab))}</option>`).join("")}</select>`);
       control.onchange = () => save(s.id, control.value);
     } else if (s.kind === "bool") {
       control = h(`<span class="toggle"><input type="checkbox" id="${fid}" ${v ? "checked" : ""}><span></span></span>`);
@@ -331,8 +346,9 @@ function renderSettings(values) {
       inp.oninput = () => ($("output", control).textContent = inp.value);
       inp.onchange = () => save(s.id, Number(inp.value));
     }
-    const row = h(`<div class="setting"><div class="setting-top"><label for="${fid}">${esc(s.label)}</label></div>
-                   ${s.help ? `<p class="help">${esc(s.help)}</p>` : ""}</div>`);
+    const help = tt(`set.${s.id}.help`, {}, s.help);
+    const row = h(`<div class="setting"><div class="setting-top"><label for="${fid}">${esc(tt("set." + s.id, {}, s.label))}</label></div>
+                   ${help ? `<p class="help">${esc(help)}</p>` : ""}</div>`);
     $(".setting-top", row).append(control);
     box.append(row);
   }
@@ -342,7 +358,7 @@ async function save(id, value) {
   try {
     await api.set_setting(S.sheetGame, id, value);
     const g = S.state.games.find((x) => x.id === S.sheetGame);
-    toast(g.running ? "Gespeichert – gilt beim nächsten Start" : "Gespeichert");
+    toast(t(g.running ? "sheet.saved_running" : "sheet.saved"));
   } catch (e) { toast(e.message); }
 }
 
@@ -374,8 +390,9 @@ function toast(msg) {
 /* ------------------------------------------------------------------ wiring */
 function wireStatic() {
   $$(".navbtn").forEach((b) => (b.onclick = () => show(b.dataset.view)));
-  $("#pad-hint").innerHTML = `<span><kbd>←</kbd><kbd>→</kbd> Spiel wählen</span><span><kbd>Enter</kbd> Spielen</span><span><kbd>E</kbd> Einstellungen</span>`;
-  const guard = (fn) => async () => { try { await fn(); } catch (e) { toast("Fehler: " + (e.message || e)); } };
+  $("#lang").onchange = (e) => setLang(e.target.value);
+  renderHint();
+  const guard = (fn) => async () => { try { await fn(); } catch (e) { toast(t("err.generic", { detail: e.message || e })); } };
   $("#btn-pick").onclick = guard(async () => { const l = await api.pick_images(); if (l.length) addPicks(l); });
   $("#btn-scan").onclick = guard(async () => addPicks(await api.pick_folder()));
   $("#pathform").onsubmit = async (e) => {
@@ -388,7 +405,7 @@ function wireStatic() {
   };
   $("#btn-build").onclick = startBuild;
   $("#btn-cancel").onclick = async () => {
-    if (await confirmBox("Bauen abbrechen?", "Bereits fertige Spiele bleiben erhalten.", "Abbrechen")) api.cancel_build();
+    if (await confirmBox(t("build.cancel_q"), t("build.cancel_text"), t("build.cancel"))) api.cancel_build();
   };
   $("#btn-to-library").onclick = () => { gotoStep(1); show("library"); };
   $("#btn-again").onclick = () => { gotoStep(1); renderSetup(); };
@@ -396,17 +413,17 @@ function wireStatic() {
   $$("#sheet [data-close]").forEach((b) => (b.onclick = closeSheet));
   $("#btn-advanced").onclick = async () => {
     const r = await api.open_advanced(S.sheetGame);
-    toast(r.ok ? "Erweiterte Einstellungen werden geöffnet" : "Erst das Spiel beenden");
+    toast(t(r.ok ? "sheet.advanced_open" : "sheet.quit_first"));
   };
   $("#btn-saves").onclick = () => api.open_saves(S.sheetGame);
-  $("#btn-all").onclick = async () => { await api.apply_to_all(S.sheetGame); toast("Für alle eingerichteten Spiele übernommen"); };
-  $("#btn-reset").onclick = async () => { renderSettings(await api.reset_settings(S.sheetGame)); toast("Standard wiederhergestellt"); };
-  $("#btn-rebuild").onclick = () => { closeSheet(); show("setup"); toast("Wähle das Image erneut, um neu zu bauen"); };
+  $("#btn-all").onclick = async () => { await api.apply_to_all(S.sheetGame); toast(t("sheet.applied_all")); };
+  $("#btn-reset").onclick = async () => { renderSettings(await api.reset_settings(S.sheetGame)); toast(t("sheet.reset_done")); };
+  $("#btn-rebuild").onclick = () => { closeSheet(); show("setup"); toast(t("sheet.rebuild_hint")); };
   $("#btn-remove").onclick = async () => {
     const g = S.state.games.find((x) => x.id === S.sheetGame);
-    if (!(await confirmBox(`${g.title} entfernen?`, "Das gebaute Spiel wird gelöscht. Deine Spielstände werden vorher gesichert.", "Entfernen"))) return;
-    if (await api.uninstall(S.sheetGame)) { closeSheet(); toast("Entfernt"); refresh(); }
-    else toast("Erst das Spiel beenden");
+    if (!(await confirmBox(t("sheet.remove_q", g), t("sheet.remove_text"), t("sheet.remove")))) return;
+    if (await api.uninstall(S.sheetGame)) { closeSheet(); toast(t("sheet.removed")); refresh(); }
+    else toast(t("sheet.quit_first"));
   };
 
   document.addEventListener("keydown", (e) => {
@@ -428,6 +445,39 @@ function activeAction(what) {
   if (what === "play" && !g.running) launch(g.id);
   if (what === "settings") openSheet(g.id);
 }
+
+/* ------------------------------------------------------------------ language */
+function setLang(lang, save = true) {
+  LANG = lang;
+  applyStaticI18n();
+  const sel = $("#lang");
+  sel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === LANG ? "selected" : ""}>${v}</option>`).join("");
+  if (save) api.set_pref("lang", lang);
+  if (!S.state) return;
+  renderHint();
+  if (S.view === "library") renderLibrary();
+  if (S.view === "setup") { renderSetup(); if (S.step === 3) finishBuildTexts(); }
+  if (S.sheetGame) openSheet(S.sheetGame);
+}
+
+/* ------------------------------------------------------------------ hint line */
+function padConnected() {
+  return navigator.getGamepads && [...navigator.getGamepads()].some(Boolean);
+}
+function renderHint() {
+  const el = $("#pad-hint");
+  if (!el) return;
+  if (padConnected()) {
+    el.innerHTML = `<span><kbd>✛</kbd> ${esc(t("hint.choose"))}</span>`
+      + `<span><kbd class="pad-a">A</kbd><kbd class="pad-x">✕</kbd> ${esc(t("hint.play"))}</span>`
+      + `<span><kbd class="pad-y">Y</kbd><kbd class="pad-t">△</kbd> ${esc(t("hint.settings"))}</span>`;
+  } else {
+    el.innerHTML = `<span><kbd>←</kbd><kbd>→</kbd> ${esc(t("hint.choose"))}</span>`
+      + `<span><kbd>Enter</kbd> ${esc(t("hint.play"))}</span><span><kbd>E</kbd> ${esc(t("hint.settings"))}</span>`;
+  }
+}
+window.addEventListener("gamepadconnected", renderHint);
+window.addEventListener("gamepaddisconnected", renderHint);
 
 /* ------------------------------------------------------------------ gamepad */
 function pollGamepad() {
@@ -473,7 +523,7 @@ async function startWhenReady(attempt = 0) {
       return;
     } catch (e) {
       booted = false;
-      if (attempt > 40) { toast("Start fehlgeschlagen: " + (e.message || e)); return; }
+      if (attempt > 40) { toast(t("err.start", { detail: e.message || e })); return; }
     }
   }
   setTimeout(() => startWhenReady(attempt + 1), 150);

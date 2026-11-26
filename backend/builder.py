@@ -31,11 +31,12 @@ STAGES = [
 class JobState:
     game_id: str
     stage: str = "queued"
-    stage_label: str = "Wartet"
     progress: float = 0.0          # whole job 0..1
-    detail: str = ""
+    detail: str = ""               # code, translated by the UI (msg.<code>)
+    detail_args: dict = field(default_factory=dict)
     status: str = "queued"         # queued | running | done | error | cancelled
-    error: str = ""
+    error: str = ""                # code (msg.<code>) or raw text
+    error_args: dict = field(default_factory=dict)
     log_tail: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -77,6 +78,12 @@ def save_installed(data: dict) -> None:
     tmp.replace(state_file())
 
 
+class BuildError(Exception):
+    def __init__(self, code: str, text: str = "", **args):
+        super().__init__(text or code)
+        self.code, self.args = code, args
+
+
 class BuildRunner:
     """Runs one queue of game builds on a worker thread."""
 
@@ -84,7 +91,8 @@ class BuildRunner:
         self.on_update = on_update
         self.jobs: dict[str, JobState] = {}
         self.order: list[str] = []
-        self.global_stage = ""        # tools download text
+        self.global_stage = ""        # tools step code (msg.<code>)
+        self.global_args: dict = {}
         self.global_progress = 0.0
         self.running = False
         self._cancel = False
@@ -97,7 +105,7 @@ class BuildRunner:
         with self._lock:
             return {
                 "running": self.running,
-                "tools": {"label": self.global_stage, "progress": self.global_progress},
+                "tools": {"code": self.global_stage, "args": self.global_args, "progress": self.global_progress},
                 "jobs": [self.jobs[g].to_dict() for g in self.order],
             }
 
@@ -128,15 +136,15 @@ class BuildRunner:
         except Exception:
             pass
 
-    def _set(self, job: JobState, stage: str, frac: float, detail: str = "") -> None:
+    def _set(self, job: JobState, stage: str, frac: float, detail: str = "", **args) -> None:
         offset = 0.0
-        for key, label, share in STAGES:
+        for key, _label, share in STAGES:
             if key == stage:
                 with self._lock:
-                    job.stage, job.stage_label = key, label
+                    job.stage = key
                     job.progress = min(1.0, offset + share * max(0.0, min(1.0, frac)))
                     if detail:
-                        job.detail = detail
+                        job.detail, job.detail_args = detail, args
                 break
             offset += share
         self._emit()
@@ -156,7 +164,7 @@ class BuildRunner:
             self._prepare_tools()
         except Exception as e:  # noqa: BLE001
             for job in self.jobs.values():
-                job.status, job.error = "error", f"Werkzeuge konnten nicht geladen werden: {e}"
+                job.status, job.error, job.error_args = "error", "err.tools", {"detail": str(e)}
             self.running = False
             self._emit()
             return
@@ -168,13 +176,15 @@ class BuildRunner:
             job.status = "running"
             try:
                 self._build_one(GAMES_BY_ID[gid], selections[gid], job)
-                job.status, job.progress, job.stage_label = "done", 1.0, "Fertig"
-                job.detail = ""
+                job.status, job.progress, job.detail = "done", 1.0, ""
             except _Cancelled:
-                job.status, job.stage_label = "cancelled", "Abgebrochen"
+                job.status = "cancelled"
+            except BuildError as e:
+                job.status, job.error, job.error_args = "error", e.code, e.args
+                self._log(job, f"ERROR: {e}")
             except Exception as e:  # noqa: BLE001
-                job.status, job.error = "error", str(e)
-                self._log(job, f"FEHLER: {e}")
+                job.status, job.error, job.error_args = "error", "err.raw", {"detail": str(e)}
+                self._log(job, f"ERROR: {e}")
             self._emit()
         self.running = False
         self._emit()
@@ -183,18 +193,18 @@ class BuildRunner:
         def prog(base: float, share: float):
             def f(frac: float, msg: str) -> None:
                 self.global_progress = base + share * frac
-                self.global_stage = msg
+                self.global_stage, self.global_args = "tools.download", {"what": msg}
                 self._emit()
             return f
-        self.global_stage = "Werkzeuge prüfen"
+        self.global_stage, self.global_args = "tools.check", {}
         self._emit()
         tools.ensure_python(prog(0.0, 0.15))
         fw = tools.ensure_framework(prog(0.15, 0.35))
         if tools.IS_WINDOWS and not os.environ.get("SPYRO_NO_TOOLCHAIN_DOWNLOAD"):
-            self.global_progress, self.global_stage = 0.5, "Compiler wird geladen (einmalig, ca. 300 MB) …"
+            self.global_progress, self.global_stage, self.global_args = 0.5, "tools.compiler", {}
             self._emit()
             self.toolchain_bin = self._ensure_toolchain(fw)
-        self.global_progress, self.global_stage = 1.0, "Werkzeuge bereit"
+        self.global_progress, self.global_stage, self.global_args = 1.0, "tools.ready", {}
         self._emit()
 
     def _ensure_toolchain(self, fw: Path) -> str:
@@ -215,7 +225,7 @@ class BuildRunner:
                     pass
         if out.returncode != 0 or not bin_dir:
             tail = "\n".join((out.stdout + out.stderr).splitlines()[-8:])
-            raise RuntimeError(f"Compiler konnte nicht geladen werden.\n{tail}")
+            raise BuildError("err.compiler", tail, detail=tail)
         return bin_dir
 
     # ---------------------------------------------------------- one game
@@ -225,17 +235,17 @@ class BuildRunner:
         (root / "build.log").write_text(f"Build {game.title} {time.ctime()}\n", encoding="utf-8")
 
         # 1. verify
-        self._set(job, "verify", 0.0, "Prüfsumme wird berechnet …")
+        self._set(job, "verify", 0.0, "d.hashing")
         chk = discs.identify(cue)
         if chk.game_id != game.id:
-            raise RuntimeError(chk.message or "Das gewählte Image passt nicht zu diesem Spiel.")
+            raise BuildError("msg." + chk.code if chk.code else "err.wrong_game", chk.message, **(chk.args or {}))
         chk = discs.verify(chk, lambda f: self._set(job, "verify", f))
         if not chk.ok:
-            raise RuntimeError(chk.message)
+            raise BuildError("msg." + chk.code, chk.message, **(chk.args or {}))
         self._check_cancel()
 
         # 2. project folder: kit + linked framework; keep saves/settings
-        self._set(job, "prepare", 0.0, "Projekt wird angelegt …")
+        self._set(job, "prepare", 0.0, "d.project")
         proj = project_dir(game)
         keep = self._stash_player_files(game)
         if proj.exists():
@@ -263,13 +273,13 @@ class BuildRunner:
         cli = str(proj / "psxrecomp" / "psxrecomp_cli.py")
 
         # 3. generate (framework emitters + game C)
-        self._set(job, "generate", 0.0, "Übersetzer wird vorbereitet …")
+        self._set(job, "generate", 0.0, "d.recompiler")
         self._run_cli(job, "generate",
                       [py, cli, "generate", "--config", "game.toml", "--project-root", ".",
                        "--disc", cue, "--json-progress"], proj)
 
         # 4. build
-        self._set(job, "build", 0.0, "Compiler wird vorbereitet …")
+        self._set(job, "build", 0.0, "d.configure")
         extra = [f"--cmake-extra={a}" for a in os.environ.get("SPYRO_CMAKE_EXTRA", "").split() if a]
         nodl = ["--no-toolchain-download"] if os.environ.get("SPYRO_NO_TOOLCHAIN_DOWNLOAD") else []
         self._run_cli(job, "build",
@@ -278,10 +288,10 @@ class BuildRunner:
                        "--prune-after", "build-intermediates", *nodl, *extra], proj)
         exe = product_exe(game)
         if not exe.exists():
-            raise RuntimeError("Das Spiel wurde nicht erzeugt (Programmdatei fehlt). Details im Protokoll.")
+            raise BuildError("err.no_exe")
 
         # 5. install: tidy, restore player files, defaults, record
-        self._set(job, "install", 0.2, "Aufräumen …")
+        self._set(job, "install", 0.2, "d.cleanup")
         for big in (proj / "disc").glob("*.bin"):
             big.unlink(missing_ok=True)
         self._restore_player_files(game, keep)
@@ -291,7 +301,7 @@ class BuildRunner:
         data[game.id] = {"cue": cue, "serial": chk.serial, "region": chk.region,
                          "built": time.strftime("%Y-%m-%d %H:%M"), "framework": tools.FRAMEWORK_STAMP}
         save_installed(data)
-        self._set(job, "install", 1.0, "")
+        self._set(job, "install", 1.0)
 
     def _run_cli(self, job: JobState, stage: str, argv: list[str], cwd: Path) -> None:
         env = dict(os.environ)
@@ -325,7 +335,7 @@ class BuildRunner:
                 if ev.get("event") == "phase":
                     pct = float(ev.get("pct") or 0.0)
                     self._set(job, stage, pct * (0.9 if stage == "build" else 1.0),
-                              _friendly(ev.get("message", "")))
+                              _friendly(ev.get("message", "")), text=ev.get("message", "")[:80])
                 elif ev.get("event") == "result":
                     last_ok = bool(ev.get("ok"))
                 continue
@@ -333,14 +343,13 @@ class BuildRunner:
             if m and stage == "build":
                 done, total = int(m.group(1)), int(m.group(2))
                 if total > 50:  # the game build, not small helper builds
-                    self._set(job, stage, 0.1 + 0.85 * done / total, f"Kompiliere {done} von {total}")
+                    self._set(job, stage, 0.1 + 0.85 * done / total, "d.files", n=done, total=total)
         rc = self._proc.wait()
         self._proc = None
         self._watching = False
         self._check_cancel()
         if rc != 0 or last_ok is False:
-            raise RuntimeError(f"Schritt „{dict((k, l) for k, l, _ in STAGES)[stage]}“ fehlgeschlagen "
-                               f"(Code {rc}). Details im Protokoll.")
+            raise BuildError("err.step", stage=stage, rc=rc)
 
     def _watch_objects(self, job: JobState, build_dir: Path, expected: int = 830) -> None:
         """cmake --build output arrives only at the end; count finished objects instead."""
@@ -356,7 +365,7 @@ class BuildRunner:
             frac = 0.1 + 0.85 * min(1.0, n / expected)
             if frac > best and getattr(self, "_watching", False):
                 best = frac
-                self._set(job, "build", frac, f"Kompiliere – {min(n, expected)} von ca. {expected} Dateien")
+                self._set(job, "build", frac, "d.files_approx", n=min(n, expected), total=expected)
 
     def _check_cancel(self) -> None:
         if self._cancel:
@@ -404,21 +413,22 @@ def _force_remove(func, path, _exc):
 
 
 def _friendly(msg: str) -> str:
+    """Framework phase text -> UI message code (msg.<code>); unknown -> d.raw."""
     table = [
-        ("Building psxrecomp", "Übersetzer wird gebaut"),
-        ("Checking disc", "Image wird geprüft"),
-        ("Normalizing disc", "Image wird vorbereitet"),
-        ("emitter", "Übersetzer wird gebaut"),
-        ("OpenBIOS", "BIOS wird übersetzt"),
-        ("Recompil", "Spielcode wird übersetzt"),
-        ("Generate complete", "Übersetzung fertig"),
-        ("toolchain", "Compiler wird geladen"),
-        ("cmake", "Kompilieren"),
-        ("PGO", "Optimieren"),
-        ("Staging", "Dateien werden bereitgestellt"),
-        ("Rebuild complete", "Fertig gebaut"),
+        ("Building psxrecomp", "d.recompiler"),
+        ("Checking disc", "d.disc"),
+        ("Normalizing disc", "d.prepare_disc"),
+        ("emitter", "d.recompiler"),
+        ("OpenBIOS", "d.bios"),
+        ("Recompil", "d.translate"),
+        ("Generate complete", "d.translated"),
+        ("toolchain", "d.compiler"),
+        ("cmake", "d.compile"),
+        ("PGO", "d.optimize"),
+        ("Staging", "d.staging"),
+        ("Rebuild complete", "d.built"),
     ]
-    for key, text in table:
+    for key, code in table:
         if key.lower() in msg.lower():
-            return text
-    return msg[:80]
+            return code
+    return "d.raw"
