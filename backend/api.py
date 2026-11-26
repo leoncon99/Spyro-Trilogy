@@ -177,7 +177,7 @@ class Api:
             return []
         import webview
         res = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
-                                             file_types=("PlayStation-Image (*.cue)", "Alle Dateien (*.*)"))
+                                             file_types=("PlayStation Image (*.cue)", "Alle Dateien (*.*)"))
         return list(res or [])
 
     def _folder_dialog(self) -> Optional[str]:

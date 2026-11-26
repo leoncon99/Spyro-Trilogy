@@ -373,8 +373,9 @@ function toast(msg) {
 function wireStatic() {
   $$(".navbtn").forEach((b) => (b.onclick = () => show(b.dataset.view)));
   $("#pad-hint").innerHTML = `<span><kbd>←</kbd><kbd>→</kbd> Spiel wählen</span><span><kbd>Enter</kbd> Spielen</span><span><kbd>E</kbd> Einstellungen</span>`;
-  $("#btn-pick").onclick = async () => addPicks(await api.pick_images());
-  $("#btn-scan").onclick = async () => addPicks(await api.pick_folder());
+  const guard = (fn) => async () => { try { await fn(); } catch (e) { toast("Fehler: " + (e.message || e)); } };
+  $("#btn-pick").onclick = guard(async () => { const l = await api.pick_images(); if (l.length) addPicks(l); });
+  $("#btn-scan").onclick = guard(async () => addPicks(await api.pick_folder()));
   $("#pathform").onsubmit = async (e) => {
     e.preventDefault();
     const p = $("#pathinput").value.trim().replace(/^"|"$/g, "");
