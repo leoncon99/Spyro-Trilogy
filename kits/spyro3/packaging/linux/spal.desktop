@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Spyro3PAL
+Exec=Spyro3PAL_Recompiled
+Icon=spal
+Categories=Game;
+Terminal=false

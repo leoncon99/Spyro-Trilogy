@@ -1,0 +1,48 @@
+{
+  "format_version": 1,
+  "game": {
+    "name": "Spyro 2: Gateway to Glimmer",
+    "id": "SCES-02104",
+    "boot_exe": "SCES_021.04"
+  },
+  "marketing": {
+    "description": "",
+    "publisher": "Sony Computer Entertainment Europe",
+    "year": "1999",
+    "region": "Europe",
+    "players": 1
+  },
+  "rom_identity": {
+    "cue_name": "Spyro 2 - Gateway to Glimmer.cue",
+    "bin_name": "Spyro 2 - Gateway to Glimmer.bin",
+    "track_counts": [
+      1
+    ],
+    "require_cue": true,
+    "data_track": {
+      "size": 747300960,
+      "md5": "ddfa3b76033fa95f424b6f8ea5d972a8",
+      "sha1": "c394b2d061b7ea6f693275f92a622191db57c7e5",
+      "crc32": "d7443009"
+    },
+    "disc_fp": "2f0354289f73953342b3509935c5f78ad0e00bb9b04493df48a1c70f7532f252"
+  },
+  "exe": {
+    "load_address": "0x80010000",
+    "entry_pc": "0x80056B38",
+    "text_size": "0x0005C800",
+    "stack_base": "0x801FFFF0"
+  },
+  "seeds": {
+    "count": 546,
+    "source": "boot_exe_jal"
+  },
+  "warnings": [
+    "cue has only 1 TRACK \u2014 Track-01-only dumps fail multi-track netplay/catalog gates; prefer a full Redump cue."
+  ],
+  "notes": [
+    "entry_pc/load_address/text_size/stack_base taken from PS-X EXE header.",
+    "seeds are first-pass boot-EXE JAL targets (+ entry); expect to grow as overlays / runtime paths are discovered.",
+    "required_disc_fp is psxrecomp-toc-v1 (matches runtime DiscIdentity)."
+  ]
+}

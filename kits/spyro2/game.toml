@@ -1,0 +1,54 @@
+# Autofilled by tools/new_project_layout/probe_disc.py from your legal dump.
+# Review before shipping. Runtime quirks / overlay seeds still need hand work.
+
+[game]
+name = "Spyro 2: Gateway to Glimmer"
+id = "SCES-02104"
+players = 1
+exe = "disc/SCES_021.04"
+disc = "@DISC@"
+load_address = "0x80010000"
+entry_pc = "0x80056B38"
+text_size = "0x0005C800"
+stack_base = "0x801FFFF0"
+
+# Digests are for data Track 01 (first BINARY FILE / TRACK 01).
+[prepare_disc]
+out_dir = "disc"
+bin_name = "Spyro 2 - Gateway to Glimmer.bin"
+cue_name = "Spyro 2 - Gateway to Glimmer.cue"
+boot_exe = "SCES_021.04"
+known_sizes = [747300960]
+known_md5 = [
+  "ddfa3b76033fa95f424b6f8ea5d972a8",
+]
+known_sha1 = [
+  "c394b2d061b7ea6f693275f92a622191db57c7e5",
+]
+known_crc32 = [
+  "d7443009",
+]
+
+[recompiler]
+seeds = "seeds/ghidra_funcs.txt"
+out_dir = "generated"
+strict = true
+
+[runtime]
+window_title = "Spyro 2: Gateway to Glimmer"
+memcard_dir = "saves"
+overlay_cache = true
+
+[video]
+renderer = "opengl"
+aspect_ratio = "4:3"
+
+[controller]
+default_mode = "digital"
+
+# Online mount gate: digests + track count + optional TOC fingerprint
+# (see docs/NETPLAY.md).
+[netplay]
+require_cue = true
+required_tracks = 1
+required_disc_fp = "2f0354289f73953342b3509935c5f78ad0e00bb9b04493df48a1c70f7532f252"
