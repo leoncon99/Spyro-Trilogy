@@ -10,10 +10,34 @@ param([switch]$NurStarten)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-if (-not (Test-Path .venv)) {
-    Write-Host "Lege Python-Umgebung an ..." -ForegroundColor Cyan
-    py -3.12 -m venv .venv
-    if ($LASTEXITCODE -ne 0) { py -m venv .venv }
+function Find-Python {
+    # pywebview (pythonnet) braucht Python 3.11 bis 3.13.
+    $ErrorActionPreference = "Continue"
+    foreach ($v in @("3.13", "3.12", "3.11")) {
+        $exe = & py "-$v" -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $exe) { return $exe.Trim() }
+    }
+    foreach ($cmd in @("python", "python3")) {
+        $exe = & $cmd -c "import sys; print(sys.executable) if (3,11) <= sys.version_info[:2] <= (3,13) else sys.exit(1)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $exe -and $exe -notmatch "WindowsApps") { return $exe.Trim() }
+    }
+    return $null
+}
+
+if (-not (Test-Path .venv\Scripts\python.exe)) {
+    $base = Find-Python
+    if (-not $base) {
+        Write-Host "Kein passendes Python (3.11 bis 3.13) gefunden." -ForegroundColor Red
+        Write-Host "Gefundene Versionen:"
+        & py -0p 2>$null
+        Write-Host ""
+        Write-Host "Bitte Python 3.12 installieren und das Skript erneut starten:" -ForegroundColor Yellow
+        Write-Host "  winget install Python.Python.3.12"
+        exit 1
+    }
+    Write-Host "Lege Python-Umgebung an mit $base ..." -ForegroundColor Cyan
+    & $base -m venv .venv
+    if ($LASTEXITCODE -ne 0) { throw "venv konnte nicht angelegt werden" }
 }
 $py = ".venv\Scripts\python.exe"
 & $py -m pip install --upgrade pip --quiet
