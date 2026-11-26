@@ -35,8 +35,9 @@ const S = {
 };
 
 /* ------------------------------------------------------------------ boot */
+let wired = false;
 async function boot() {
-  wireStatic();
+  if (!wired) { wireStatic(); wired = true; }
   await refresh();
   const any = S.state.games.some((g) => g.installed);
   show(any ? "library" : "library");
@@ -66,6 +67,7 @@ async function tick() {
 }
 
 function show(view) {
+  if (!S.state) return;
   S.view = view;
   $$(".view").forEach((v) => (v.hidden = v.id !== "view-" + view));
   $$(".navbtn").forEach((b) => b.toggleAttribute("aria-current", b.dataset.view === view));
@@ -457,6 +459,24 @@ function pollGamepad() {
   requestAnimationFrame(frame);
 }
 
-if (window.pywebview) boot();
-else if (location.protocol.startsWith("http")) boot();
-else window.addEventListener("pywebviewready", boot);
+/* pywebview creates window.pywebview before its api methods exist; start only
+ * once get_state is really callable, and retry for a few seconds. */
+let booted = false;
+async function startWhenReady(attempt = 0) {
+  if (booted) return;
+  const native = !location.protocol.startsWith("http");
+  const ready = !native || (window.pywebview && window.pywebview.api && window.pywebview.api.get_state);
+  if (ready) {
+    try {
+      booted = true;
+      await boot();
+      return;
+    } catch (e) {
+      booted = false;
+      if (attempt > 40) { toast("Start fehlgeschlagen: " + (e.message || e)); return; }
+    }
+  }
+  setTimeout(() => startWhenReady(attempt + 1), 150);
+}
+window.addEventListener("pywebviewready", () => startWhenReady());
+startWhenReady();
