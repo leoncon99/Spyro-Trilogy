@@ -75,7 +75,7 @@ def main() -> None:
     window = webview.create_window(
         "Spyro Trilogy", str(UI_DIR / "index.html"), js_api=api,
         width=1280, height=800, min_size=(1024, 680), background_color="#120a24")
-    api.window = window
+    api._window = window
     webview.start(gui="edgechromium" if tools.IS_WINDOWS else None, debug="--debug" in sys.argv)
 
 

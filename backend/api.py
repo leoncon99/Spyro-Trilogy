@@ -16,8 +16,8 @@ VERSION = "0.1.0"
 
 class Api:
     def __init__(self) -> None:
-        self.window = None                      # set by app.py (pywebview)
-        self.runner = builder.BuildRunner(lambda snap: None)
+        self._window = None                     # set by app.py (pywebview); private: pywebview walks public attributes
+        self._runner = builder.BuildRunner(lambda snap: None)
         self._procs: dict[str, subprocess.Popen] = {}
         self._lock = threading.Lock()
 
@@ -40,7 +40,7 @@ class Api:
         return {
             "version": VERSION,
             "games": games,
-            "build": self.runner.snapshot(),
+            "build": self._runner.snapshot(),
             "data_dir": str(tools.data_dir()),
             "free_gb": round(tools.disk_free_gb(tools.data_dir()), 1),
             "platform": "windows" if tools.IS_WINDOWS else "linux",
@@ -69,10 +69,10 @@ class Api:
         sel = {k: v for k, v in selections.items() if k in GAMES_BY_ID and v}
         if not sel:
             return False
-        return self.runner.start(sel)
+        return self._runner.start(sel)
 
     def cancel_build(self) -> None:
-        self.runner.cancel()
+        self._runner.cancel()
 
     def build_log(self, game_id: str) -> str:
         p = builder.game_root(GAMES_BY_ID[game_id]) / "build.log"
@@ -133,7 +133,7 @@ class Api:
 
     def uninstall(self, game_id: str) -> bool:
         g = GAMES_BY_ID[game_id]
-        if self._is_running(game_id) or self.runner.running:
+        if self._is_running(game_id) or self._runner.running:
             return False
         import shutil
         root = builder.game_root(g)
@@ -173,16 +173,16 @@ class Api:
             return bool(p and p.poll() is None)
 
     def _file_dialog(self) -> list[str]:
-        if self.window is None:
+        if self._window is None:
             return []
         import webview
-        res = self.window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
+        res = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
                                              file_types=("PlayStation-Image (*.cue)", "Alle Dateien (*.*)"))
         return list(res or [])
 
     def _folder_dialog(self) -> Optional[str]:
-        if self.window is None:
+        if self._window is None:
             return None
         import webview
-        res = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         return res[0] if res else None
