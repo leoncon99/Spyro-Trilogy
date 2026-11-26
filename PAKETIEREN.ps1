@@ -60,7 +60,7 @@ Write-Host "Paketiere Spyro Trilogy $version ..." -ForegroundColor Cyan
     app.py
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller fehlgeschlagen" }
 
-Copy-Item LIESMICH.txt "dist\Spyro Trilogy\" -Force
+Copy-Item README.txt "dist\Spyro Trilogy\" -Force
 $zip = "dist\SpyroTrilogy-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "dist\Spyro Trilogy" -DestinationPath $zip

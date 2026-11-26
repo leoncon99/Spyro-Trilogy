@@ -1,5 +1,5 @@
 # Kit: Spyro 2: Gateway to Glimmer (PAL)
 
-Projektdateien, aus denen Spyro Trilogy dieses Spiel baut. Der Spielcode
-(`generated/`) entsteht erst beim Bauen aus deinem eigenen Disc-Image und ist
-hier nicht enthalten. Siehe das README im Hauptverzeichnis.
+Project files from which Spyro Trilogy builds this game. The game code
+(`generated/`) is only created during the build, from your own disc image,
+and is not included here. See the README in the repository root.

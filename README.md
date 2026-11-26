@@ -1,95 +1,79 @@
 # Spyro Trilogy
 
-Native PC-Ports der drei PlayStation-Spyro-Spiele (PAL/Europa) – **ohne Emulation**,
-gebaut aus deinen **eigenen** Discs.
+Native PC ports of the three PlayStation Spyro games (PAL/Europe) – **no
+emulation**, built from **your own** discs.
 
-*English summary below.*
+Spyro Trilogy is a Windows app that turns disc images of Spyro the Dragon,
+Spyro 2: Gateway to Glimmer and Spyro: Year of the Dragon into native PC games
+through static recompilation ([PSXRecomp](https://github.com/mstan/psxrecomp)),
+and launches them. This repository contains **no game data, no game code and
+no prebuilt games** – everything is created on your PC from your images.
 
-Spyro Trilogy ist eine Windows-App, die aus Disc-Images von Spyro the Dragon,
-Spyro 2: Gateway to Glimmer und Spyro: Year of the Dragon per statischer
-Rekompilierung ([PSXRecomp](https://github.com/mstan/psxrecomp)) native PC-Spiele
-baut und startet. Dieses Repository enthält **keine Spieldaten, keinen
-Spielcode und keine fertigen Spiele** – alles entsteht erst auf deinem PC aus
-deinen Images.
+## Features
 
-## Was die App kann
+- **Guided setup:** pick your images (or a folder). The app identifies and
+  verifies them (serial, size, SHA-1, LibCrypt `.sbi`) and builds the games
+  you choose.
+- **Library:** launch and configure all three games – with mouse, keyboard or
+  controller.
+- **Per-game settings:** fullscreen, VSync, internal resolution (up to 8×),
+  antialiasing, texture filtering, wobble fix (PGXP), CRT filter, volume, and
+  keyboard and controller bindings.
+- **In-game menu** (F10 · Ctrl+L · Select+L3) in the app's style.
+- **Languages:** English and German.
 
-- **Einrichtung mit Oberfläche:** Images (oder einen Ordner) wählen, die App
-  erkennt und prüft sie (Seriennummer, Größe, SHA-1, LibCrypt-`.sbi`) und baut
-  die gewählten Spiele.
-- **Bibliothek:** alle drei Spiele starten und einstellen – mit Maus,
-  Tastatur oder Controller.
-- **Einstellungen pro Spiel:** Vollbild, VSync, interne Auflösung (bis 8×),
-  Kantenglättung, Texturfilter, Wackel-Korrektur (PGXP), Röhrenfilter,
-  Lautstärke sowie Tastatur- und Controllerbelegung.
-- **Spielmenü im Spiel** (F10 · Strg+L · Select+L3) im Stil der App.
-- **Sprachen:** Deutsch und Englisch.
+## Supported discs
 
-## Unterstützte Discs
-
-| Spiel | Serial | Hinweis |
+| Game | Serial | Note |
 |---|---|---|
 | Spyro the Dragon | SCES-01438 | |
-| Spyro 2: Gateway to Glimmer | SCES-02104 | `.sbi` nötig |
-| Spyro: Year of the Dragon | SCES-02835 | `.sbi` nötig |
+| Spyro 2: Gateway to Glimmer | SCES-02104 | `.sbi` required |
+| Spyro: Year of the Dragon | SCES-02835 | `.sbi` required |
 
-Images als `.cue` + `.bin` (Redump-Stand). Bei Spyro 2 und 3 muss die passende
-`.sbi`-Datei mit gleichem Namen neben der `.cue` liegen.
+Images as `.cue` + `.bin` (Redump dumps). For Spyro 2 and 3 the matching
+`.sbi` file must sit next to the `.cue` with the same name.
 
-## Benutzen
+## Usage
 
-1. Fertige App herunterladen (Releases) oder selbst paketieren (siehe unten).
-2. `Spyro Trilogy.exe` starten → **Einrichtung starten** → Images wählen →
-   **Spiele bauen**. Beim ersten Mal lädt die App einmalig ihre Werkzeuge
-   (Python, Clang/CMake, PSXRecomp-Framework, ca. 400 MB). Danach dauert jedes
-   Spiel etwa 5–15 Minuten.
-3. In der Bibliothek auf **Spielen** klicken.
+1. Download the app (Releases) or package it yourself (see below).
+2. Run `Spyro Trilogy.exe` → **Start setup** → choose your images →
+   **Build games**. On first use the app downloads its tools once (Python,
+   Clang/CMake, the PSXRecomp framework, about 400 MB). After that each game
+   takes about 5–15 minutes to build.
+3. Click **Play** in the library.
 
-Daten liegen unter `%LOCALAPPDATA%\SpyroTrilogy`.
+Data is stored in `%LOCALAPPDATA%\SpyroTrilogy`.
 
-## Selbst paketieren (Windows)
+## Packaging it yourself (Windows)
 
-Voraussetzung: Python 3.11–3.13 (nicht 3.14, wegen pythonnet).
+Requires Python 3.11–3.13 (not 3.14, because of pythonnet).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1            # EXE + ZIP in dist\
-powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1 -NurStarten # direkt starten
+powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1 -NurStarten # run directly
 ```
 
-## Aufbau
+## Layout
 
-| Pfad | Inhalt |
+| Path | Contents |
 |---|---|
-| `app.py` | Fenster (pywebview/WebView2), Entwicklungsserver mit `--serve` |
-| `backend/` | Disc-Prüfung, Bauablauf, Einstellungen, Steuerung, Framework-Patches |
-| `ui/` | Oberfläche (HTML/CSS/JS), Übersetzungen, Schriften |
-| `kits/spyro1-3/` | Projektdateien je Spiel (ohne generierten Code), Spielmenü, Fixes |
-| `kits/common/` | gemeinsame Quelle des Spielmenüs (`spyro_menu*.cpp`) |
+| `app.py` | Window (pywebview/WebView2); development server with `--serve` |
+| `backend/` | Disc checks, build pipeline, settings, controls, framework patches |
+| `ui/` | User interface (HTML/CSS/JS), translations, fonts |
+| `kits/spyro1-3/` | Per-game project files (without generated code), in-game menu, fixes |
+| `kits/common/` | Shared source of the in-game menu (`spyro_menu*.cpp`) |
 
-## Lizenzen und Hinweise
+## Licences and notes
 
-- Spyro Trilogy selbst steht unter der **PolyForm Noncommercial License 1.0.0**
-  (siehe `LICENSE`): Nutzen, Ändern und Weitergeben ist erlaubt, aber nicht
-  kommerziell. Ausgenommen sind die Schriften (eigene Lizenz, siehe unten).
-- PSXRecomp steht unter der **PolyForm Noncommercial License 1.0.0**; die App
-  lädt es beim ersten Start herunter, sie enthält es nicht. Damit gebaute
-  Spiele dürfen nicht kommerziell genutzt werden.
-- recomp-ui: MIT-Lizenz.
-- Schriften: Fredoka und Atkinson Hyperlegible, SIL Open Font License 1.1
-  (Lizenztexte in `ui/fonts/` und `kits/*/assets/spyro/`).
-- Inoffizielles Fanprojekt, nicht verbunden mit Sony Interactive
-  Entertainment, Insomniac Games, Toys for Bob oder Activision. „Spyro“ ist
-  eine Marke ihrer jeweiligen Inhaber.
-
----
-
-## English summary
-
-Spyro Trilogy is a Windows app that turns **your own** PAL disc images of the
-three PlayStation Spyro games into native PC games via static recompilation
-(PSXRecomp) – no emulation. It ships no game data or code; everything is built
-locally from your images. It offers guided setup with disc verification, a
-library to launch and configure each game (resolution up to 8×, AA, PGXP,
-CRT filter, key and controller bindings), an in-game menu, and German/English
-UI. Spyro Trilogy and PSXRecomp are licensed under PolyForm Noncommercial
-1.0.0; this is an unofficial fan project.
+- Spyro Trilogy is licensed under the **PolyForm Noncommercial License 1.0.0**
+  (see `LICENSE`): you may use, modify and share it, but not commercially. The
+  fonts are excluded (own licence, see below).
+- PSXRecomp is also licensed under the PolyForm Noncommercial License 1.0.0.
+  The app downloads it on first run and does not include it. Games built with
+  it must not be used commercially.
+- recomp-ui: MIT licence.
+- Fonts: Fredoka and Atkinson Hyperlegible, SIL Open Font License 1.1
+  (licence texts in `ui/fonts/` and `kits/*/assets/spyro/`).
+- Unofficial fan project, not affiliated with Sony Interactive Entertainment,
+  Insomniac Games, Toys for Bob or Activision. "Spyro" is a trademark of its
+  respective owners.
