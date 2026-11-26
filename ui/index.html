@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spyro Trilogy</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="gem" viewBox="0 0 200 180">
+      <polygon class="f-a" points="40,40 80,40 60,75 5,75"/>
+      <polygon class="f-b" points="80,40 120,40 140,75 60,75"/>
+      <polygon class="f-c" points="120,40 160,40 195,75 140,75"/>
+      <polygon class="f-d" points="5,75 60,75 100,172"/>
+      <polygon class="f-e" points="60,75 140,75 100,172"/>
+      <polygon class="f-f" points="140,75 195,75 100,172"/>
+      <polygon class="f-glint" points="88,46 104,46 96,60"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-gem"><use href="#gem"/></svg>
+    <span class="brand-name">Spyro Trilogy</span>
+  </div>
+  <div class="topbar-right">
+  <nav class="topnav">
+    <button class="navbtn" data-view="library" aria-current="page" data-i18n="nav.library"></button>
+    <button class="navbtn" data-view="setup" data-i18n="nav.setup"></button>
+  </nav>
+  <label class="langpick"><span class="sr" data-i18n="lang.label"></span><select id="lang"></select></label>
+  </div>
+</header>
+
+<main>
+  <!-- ======================= LIBRARY ======================= -->
+  <section id="view-library" class="view" data-i18n-aria="nav.library">
+    <div class="worlds" id="worlds"></div>
+    <p class="hint" id="pad-hint"></p>
+  </section>
+
+  <!-- ======================= SETUP ======================= -->
+  <section id="view-setup" class="view" hidden data-i18n-aria="nav.setup">
+    <ol class="steps" >
+      <li data-step="1" data-i18n="step.1"></li>
+      <li data-step="2" data-i18n="step.2"></li>
+      <li data-step="3" data-i18n="step.3"></li>
+    </ol>
+
+    <div class="step-panel" data-panel="1">
+      <h1 class="setup-title" data-i18n="setup.title"></h1>
+      <p class="lede" data-i18n-html="setup.lede"></p>
+      <div class="pickers">
+        <button class="btn btn-gold" id="btn-pick" data-i18n="setup.pick"></button>
+        <button class="btn btn-ghost" id="btn-scan" data-i18n="setup.scan"></button>
+        <form class="pathform" id="pathform">
+          <input id="pathinput" data-i18n-placeholder="setup.path" data-i18n-aria="setup.path" autocomplete="off">
+          <button class="btn btn-ghost" type="submit" data-i18n="setup.add"></button>
+        </form>
+      </div>
+      <div class="slots" id="slots"></div>
+      <footer class="setup-foot">
+        <p class="small" id="space-note"></p>
+        <button class="btn btn-gold btn-lg" id="btn-build" disabled></button>
+      </footer>
+    </div>
+
+    <div class="step-panel" data-panel="2" hidden>
+      <h1 class="setup-title" data-i18n="build.title"></h1>
+      <p class="lede" data-i18n="build.lede"></p>
+      <div class="toolbar-progress" id="tools-progress">
+        <div class="tp-label"><span data-i18n="build.tools"></span><span id="tools-label"></span></div>
+        <div class="bar"><i id="tools-bar"></i></div>
+      </div>
+      <div class="jobs" id="jobs"></div>
+      <footer class="setup-foot">
+        <span></span>
+        <button class="btn btn-ghost" id="btn-cancel" data-i18n="build.cancel"></button>
+      </footer>
+    </div>
+
+    <div class="step-panel" data-panel="3" hidden>
+      <h1 class="setup-title" id="done-title"></h1>
+      <div class="done-list" id="done-list"></div>
+      <footer class="setup-foot">
+        <button class="btn btn-ghost" id="btn-again" data-i18n="done.again"></button>
+        <button class="btn btn-gold btn-lg" id="btn-to-library" data-i18n="done.library"></button>
+      </footer>
+    </div>
+  </section>
+</main>
+
+<!-- ======================= SETTINGS SHEET ======================= -->
+<aside class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sheet-title">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-body">
+    <header class="sheet-head">
+      <svg class="sheet-gem"><use href="#gem"/></svg>
+      <div>
+        <h2 id="sheet-title"></h2>
+        <p class="small" id="sheet-sub"></p>
+      </div>
+      <button class="iconbtn" data-close data-i18n-aria="sheet.close">✕</button>
+    </header>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="game" aria-selected="true" data-i18n="tab.game"></button>
+      <button role="tab" data-tab="controls" aria-selected="false" data-i18n="tab.controls"></button>
+    </div>
+    <div class="sheet-content" id="sheet-content"></div>
+    <footer class="sheet-foot">
+      <div class="sheet-actions" data-for="game">
+        <button class="btn btn-ghost" id="btn-saves" data-i18n="sheet.saves"></button>
+        <button class="btn btn-ghost" id="btn-all" data-i18n="sheet.all"></button>
+      </div>
+      <div class="sheet-actions" data-for="controls" hidden>
+        <button class="btn btn-ghost" id="btn-ctl-all" data-i18n="sheet.all"></button>
+        <button class="btn btn-text" id="btn-ctl-reset" data-i18n="sheet.reset"></button>
+      </div>
+      <div class="sheet-actions danger" data-for="game">
+        <button class="btn btn-text" id="btn-reset" data-i18n="sheet.reset"></button>
+        <button class="btn btn-text" id="btn-rebuild" data-i18n="sheet.rebuild"></button>
+        <button class="btn btn-text" id="btn-remove" data-i18n="sheet.remove"></button>
+      </div>
+    </footer>
+  </div>
+</aside>
+
+<div class="modal" id="modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card">
+    <h2 id="modal-title"></h2>
+    <p id="modal-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-no" data-i18n="modal.cancel"></button>
+      <button class="btn btn-gold" id="modal-yes"></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

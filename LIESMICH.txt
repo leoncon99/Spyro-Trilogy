@@ -1,0 +1,40 @@
+Spyro Trilogy – native PC-Ports der PlayStation-Spyro-Spiele
+=============================================================
+
+Dieses Programm baut aus DEINEN EIGENEN Spyro-Discs native PC-Spiele und
+startet sie. Es enthält keine Spieldaten und lädt keine herunter.
+
+Unterstützt (PAL/Europa):
+  - Spyro the Dragon              (SCES-01438)
+  - Spyro 2: Gateway to Glimmer   (SCES-02104, mit .sbi-Datei)
+  - Spyro: Year of the Dragon     (SCES-02835, mit .sbi-Datei)
+
+So geht's
+---------
+1. Erstelle von deinen Discs Images im Format .cue + .bin (z. B. mit
+   DuckStation, ImgBurn oder einem Redump-Tool). Bei Spyro 2 und 3 brauchst
+   du zusätzlich die passende .sbi-Datei (Kopierschutzdaten) mit gleichem
+   Namen neben der .cue.
+2. Starte "Spyro Trilogy.exe" und wähle "Einrichtung starten".
+3. Wähle die Images (oder den Ordner, in dem sie liegen) und klicke
+   "Spiele bauen". Beim ersten Mal werden einmalig Werkzeuge geladen
+   (Python, Compiler, Framework – ca. 400 MB). Danach dauert jedes Spiel
+   etwa 5–15 Minuten.
+4. Fertig: In der Bibliothek auf "Spielen" klicken.
+
+Im Spiel
+--------
+  Menü (Einstellungen, Beenden):  F10  oder  Strg+L  oder Controller Select + L3
+  Vollbild umschalten:            Alt+Enter
+
+Speicherorte
+------------
+  Alles liegt unter  %LOCALAPPDATA%\SpyroTrilogy
+  Spielstände:       ...\games\<spiel>\project\build-release\saves
+  Bauprotokoll:      ...\games\<spiel>\build.log
+
+Technik
+-------
+Statische Rekompilierung mit PSXRecomp (github.com/mstan/psxrecomp) und
+recomp-ui. Schriften: Fredoka und Atkinson Hyperlegible (SIL OFL 1.1).
+Inoffizielles Fanprojekt, nicht verbunden mit Sony, Insomniac oder Activision.

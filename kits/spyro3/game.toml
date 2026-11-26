@@ -1,0 +1,54 @@
+# Autofilled by tools/new_project_layout/probe_disc.py from your legal dump.
+# Review before shipping. Runtime quirks / overlay seeds still need hand work.
+
+[game]
+name = "Spyro: Year of the Dragon"
+id = "SCES-02835"
+players = 1
+exe = "disc/SCES_028.35"
+disc = "@DISC@"
+load_address = "0x80010000"
+entry_pc = "0x8005B940"
+text_size = "0x0005F800"
+stack_base = "0x801FFFF0"
+
+# Digests are for data Track 01 (first BINARY FILE / TRACK 01).
+[prepare_disc]
+out_dir = "disc"
+bin_name = "Spyro - Year of the Dragon.bin"
+cue_name = "Spyro - Year of the Dragon.cue"
+boot_exe = "SCES_028.35"
+known_sizes = [747418560]
+known_md5 = [
+  "d0151e6785723b188fe957ff5a2c9814",
+]
+known_sha1 = [
+  "f1b46e4025b55d7a9791fd5a5fc5eadb167d723c",
+]
+known_crc32 = [
+  "9bcfefe1",
+]
+
+[recompiler]
+seeds = "seeds/ghidra_funcs.txt"
+out_dir = "generated"
+strict = true
+
+[runtime]
+window_title = "Spyro: Year of the Dragon"
+memcard_dir = "saves"
+overlay_cache = true
+
+[video]
+renderer = "opengl"
+aspect_ratio = "4:3"
+
+[controller]
+default_mode = "digital"
+
+# Online mount gate: digests + track count + optional TOC fingerprint
+# (see docs/NETPLAY.md).
+[netplay]
+require_cue = true
+required_tracks = 1
+required_disc_fp = "7a604e49327cf4ebd7208ce88d45f89b5fcdebef58e6ef8043f0af0fff879bbc"
