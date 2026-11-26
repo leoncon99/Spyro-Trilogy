@@ -68,6 +68,9 @@ powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1 -NurStarten # direkt s
 
 ## Lizenzen und Hinweise
 
+- Spyro Trilogy selbst steht unter der **PolyForm Noncommercial License 1.0.0**
+  (siehe `LICENSE`): Nutzen, Ändern und Weitergeben ist erlaubt, aber nicht
+  kommerziell. Ausgenommen sind die Schriften (eigene Lizenz, siehe unten).
 - PSXRecomp steht unter der **PolyForm Noncommercial License 1.0.0**; die App
   lädt es beim ersten Start herunter, sie enthält es nicht. Damit gebaute
   Spiele dürfen nicht kommerziell genutzt werden.
@@ -88,4 +91,5 @@ three PlayStation Spyro games into native PC games via static recompilation
 locally from your images. It offers guided setup with disc verification, a
 library to launch and configure each game (resolution up to 8×, AA, PGXP,
 CRT filter, key and controller bindings), an in-game menu, and German/English
-UI. PSXRecomp is PolyForm Noncommercial; this is an unofficial fan project.
+UI. Spyro Trilogy and PSXRecomp are licensed under PolyForm Noncommercial
+1.0.0; this is an unofficial fan project.
