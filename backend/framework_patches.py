@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-PATCH_LEVEL = "spyro-patches-3"
+PATCH_LEVEL = "spyro-patches-4"
 
 _RT = "recomp-ui/src/common/backends/imgui/runtime_ui_imgui.cpp"
 
@@ -111,9 +111,56 @@ PATCHES += [
     (_PROV, '0x2010, 0x2027, 0x2190', '0x2010, 0x203A, 0x2190'),
 ]
 
+# Level 4: the game draws the whole in-game menu itself (spyro_menu.cpp, in the
+# app's style) and loads its own fonts; the provider remembers whether the
+# player last used a keyboard or a controller. "Return to launcher" goes: in
+# Spyro Trilogy it would do exactly what "Quit game" does.
+_PSXPROV = "recomp-ui/src/consoles/psx/psx_menu_provider.cpp"
+PATCHES += [
+    (_RT, 'float recomp_runtime_ui_font_size = 18.0f;\n}\n',
+     'float recomp_runtime_ui_font_size = 18.0f;\n'
+     '/* Optional: the game draws the menu itself / loads its fonts (before NewFrame). */\n'
+     'void (*recomp_runtime_ui_custom_render)(RecompRuntimeUi *) = nullptr;\n'
+     'void (*recomp_runtime_ui_fonts_hook)(int, int) = nullptr;\n'
+     '/* 1 when the player last pressed a controller button, 0 for the keyboard. */\n'
+     'int recomp_runtime_ui_last_input_pad = 0;\n'
+     '}\n'),
+    (_RT, 'extern "C" void recomp_runtime_ui_render_imgui(RecompRuntimeUi *ui) {\n'
+          '    if (!ui || ImGui::GetCurrentContext() == nullptr) return;\n',
+     'extern "C" void recomp_runtime_ui_render_imgui(RecompRuntimeUi *ui) {\n'
+     '    if (!ui || ImGui::GetCurrentContext() == nullptr) return;\n'
+     '    if (recomp_runtime_ui_custom_render) { recomp_runtime_ui_custom_render(ui); return; }\n'),
+    (_PROV, 'extern "C" float recomp_runtime_ui_font_size;\n\nvoid draw(',
+     'extern "C" float recomp_runtime_ui_font_size;\n'
+     'extern "C" void (*recomp_runtime_ui_fonts_hook)(int, int);\n\n'
+     'void draw('),
+    (_PROV, '    ImGui::SetCurrentContext(g_ctx);\n    if (!g_gl_ready) g_gl_ready',
+     '    ImGui::SetCurrentContext(g_ctx);\n'
+     '    if (recomp_runtime_ui_fonts_hook) recomp_runtime_ui_fonts_hook(w, h);\n'
+     '    if (!g_gl_ready) g_gl_ready'),
+    (_PROV, '}  // namespace\n\nint sdl_event(const void *p) {\n',
+     '}  // namespace\n\n'
+     'extern "C" int recomp_runtime_ui_last_input_pad;\n\n'
+     'int sdl_event(const void *p) {\n'),
+    (_PROV, '    if (e.type == SDL_EVENT_KEY_DOWN) {\n        const SDL_Keycode k = e.key.key;\n',
+     '    if (e.type == SDL_EVENT_KEY_DOWN) {\n        recomp_runtime_ui_last_input_pad = 0;\n'
+     '        const SDL_Keycode k = e.key.key;\n'),
+    (_PROV, '        const unsigned bit = 1u << e.gbutton.button;\n',
+     '        if (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) recomp_runtime_ui_last_input_pad = 1;\n'
+     '        const unsigned bit = 1u << e.gbutton.button;\n'),
+    (_PSXPROV, 'RECOMP_RUNTIME_UI_STANDARD_RESUME | RECOMP_RUNTIME_UI_STANDARD_RETURN_TO_LAUNCHER |\n'
+               '                   RECOMP_RUNTIME_UI_STANDARD_QUIT;',
+     'RECOMP_RUNTIME_UI_STANDARD_RESUME | RECOMP_RUNTIME_UI_STANDARD_QUIT;'),
+]
+
 
 def apply(root: Path) -> None:
-    """Apply all patches under the framework root (idempotent)."""
+    """Apply all patches under the framework root (idempotent).
+
+    A patch counts as applied when its new text is present, or when a later
+    patch rewrote part of it (its old text lies inside this patch's new text)
+    and that later patch is applied.
+    """
     marker = root / f".{PATCH_LEVEL}"
     if marker.exists():
         return
@@ -123,8 +170,14 @@ def apply(root: Path) -> None:
     for rel, edits in by_file.items():
         path = root / rel
         text = path.read_text(encoding="utf-8")
-        for old, new in edits:
-            if new in text:
+
+        def applied(i: int) -> bool:
+            if edits[i][1] in text:
+                return True
+            return any(edits[j][0] in edits[i][1] and applied(j) for j in range(i + 1, len(edits)))
+
+        for i, (old, new) in enumerate(edits):
+            if applied(i):
                 continue
             if text.count(old) != 1:
                 raise RuntimeError(f"Framework patch does not fit {rel}: {old[:60]!r}")

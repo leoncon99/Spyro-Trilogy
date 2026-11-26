@@ -2,11 +2,13 @@
  *
  * 1. Registers recomp-ui's full in-game menu (psxrecomp only attaches it by
  *    default for multi-disc titles).
- * 2. "Return to launcher" closes the game instead of opening the framework's
- *    own launcher: Spyro Trilogy (still open behind the game) is the launcher.
+ * 2. Leaving the game returns to Spyro Trilogy (still open behind the game),
+ *    never to the framework's own launcher.
  * 3. Translates the menu. Language: SPYRO_LANG (set by Spyro Trilogy), else
  *    the system UI language, else English. Needs the Spyro framework patch
  *    that adds recomp_runtime_ui_translate.
+ *
+ * 4. Draws the menu in the app's style (spyro_menu_ui.cpp).
  *
  * Opens with F10 / Ctrl+L, or Select + L3 on a controller.
  */
@@ -30,8 +32,7 @@
 #endif
 
 extern "C" const char *(*recomp_runtime_ui_translate)(const char *);
-extern "C" const char *recomp_runtime_ui_font_path;
-extern "C" float recomp_runtime_ui_font_size;
+void spyro_menu_ui_install(const char *assets_dir);  // spyro_menu_ui.cpp
 
 namespace {
 
@@ -46,6 +47,8 @@ const Entry kGerman[] = {
     {"Settings", "Einstellungen"},
     {"Resume", "Weiter"},
     {"Select", "Auswählen"},
+    {"Open", "Öffnen"},
+    {"Change", "Ändern"},
     {"Back", "Zurück"},
     {"< Back", "< Zurück"},
     {"Navigate", "Navigieren"},
@@ -71,7 +74,7 @@ const Entry kGerman[] = {
     {"Display", "Anzeige"},
     {"Graphics", "Grafik"},
     {"Audio", "Ton"},
-    {"System", "System"},
+    {"System", "Spiel"},
     {"Input", "Eingabe"},
     {"Disc", "Disc"},
 
@@ -124,7 +127,7 @@ const Entry kGerman[] = {
      "Spiel beenden und zurück zu Spyro Trilogy. Zweimal drücken."},
     {"Press again for the launcher", "Erneut drücken, um zur Bibliothek zurückzukehren"},
     {"Quit game", "Spiel beenden"},
-    {"Close the game. Press twice.", "Spiel schließen. Zweimal drücken."},
+    {"Close the game. Press twice.", "Spiel schließen und zurück zu Spyro Trilogy. Zweimal drücken."},
     {"Press again to quit", "Zum Beenden erneut drücken"},
     {"Restart game", "Spiel neu starten"},
     {"Reset the console: the game starts again from its boot screen. Unsaved progress is lost.",
@@ -206,13 +209,26 @@ const Entry kEnglish[] = {
     {"Return to launcher", "Back to library"},
     {"Close the game, open the launcher. Press twice.", "Quit the game and return to Spyro Trilogy. Press twice."},
     {"Press again for the launcher", "Press again to return to the library"},
+    {"System", "Game"},
+    /* identity: lets a status line cut at 48 bytes be found by its start */
+    {"Press again to restart the game. Unsaved progress is lost.",
+     "Press again to restart the game. Unsaved progress is lost."},
+    {"Press again to return to the library", "Press again to return to the library"},
+    {"Close the game. Press twice.", "Quit the game and return to Spyro Trilogy. Press twice."},
 };
 
 std::unordered_map<std::string, const char *> g_table;
 
 const char *translate(const char *s) {
     auto it = g_table.find(s);
-    return it == g_table.end() ? s : it->second;
+    if (it != g_table.end()) return it->second;
+    /* The menu keeps status lines in 48 bytes: match a cut-off line by its start. */
+    const size_t n = std::strlen(s);
+    if (n >= 40) {
+        for (const auto &e : g_table)
+            if (e.first.size() > n && e.first.compare(0, n, s) == 0) return e.second;
+    }
+    return s;
 }
 
 std::string detect_language() {
@@ -250,16 +266,10 @@ void spyro_request_exit(int how) {
     if (g_inner_exit) g_inner_exit(how);
 }
 
-std::string g_font_path;
-
 int spyro_attach(void *ctx, void *window, void *gl, const PsxMenuHost *host) {
     if (!host) return g_inner->attach(ctx, window, gl, host);
-    if (host->assets_dir && host->assets_dir[0]) {
-        /* Spyro Trilogy's typeface (staged by the game's CMakeLists.txt) */
-        g_font_path = std::string(host->assets_dir) + "/spyro/SpyroMenu-Regular.ttf";
-        recomp_runtime_ui_font_path = g_font_path.c_str();
-        recomp_runtime_ui_font_size = 16.0f;
-    }
+    /* Our look and fonts (staged into assets/spyro by the game's CMakeLists.txt) */
+    spyro_menu_ui_install(host->assets_dir);
     g_host = *host;
     g_inner_exit = host->request_exit;
     g_host.request_exit = spyro_request_exit;

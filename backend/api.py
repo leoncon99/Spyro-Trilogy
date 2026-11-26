@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from . import builder, controls, discs, settings, tools
-from .catalog import GAMES, GAMES_BY_ID
+from .catalog import GAMES, GAMES_BY_ID, KIT_STAMP
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 
 class Api:
@@ -35,6 +35,7 @@ class Api:
                 "installed": ok,
                 "info": info or None,
                 "disc_missing": bool(ok and disc and not Path(disc).exists()),
+                "outdated": bool(ok and info.get("kit") != KIT_STAMP),
                 "running": self._is_running(g.id),
             })
         return {

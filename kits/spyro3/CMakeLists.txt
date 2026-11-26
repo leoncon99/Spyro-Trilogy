@@ -55,8 +55,12 @@ psxrecomp_add_game_runtime(psx-runtime
     GEN_MARKER "generated/SCES_028.35_dispatch.c"
     GEN_FULL_GLOB "generated/SCES_028.35_full_*.c"
     CODEGEN_SETUP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/codegen_setup.c"
-    EXTRAS_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/spyro_menu.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/spyro3_fixes.c"
+    EXTRAS_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/spyro_menu.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/spyro_menu_ui.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/spyro3_fixes.c"
 )
+
+# Which game the in-game menu belongs to (title, gem colours).
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/spyro_menu_ui.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "SPYRO_GAME=3")
 
 # Stage runtime configs next to the exe for direct build/ launches. Only copy
 # files that exist — never fail POST_BUILD when game_options.toml is absent.

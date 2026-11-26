@@ -143,7 +143,7 @@ function updateLibraryStatus() {
   $$(".world").forEach((el) => {
     const g = S.state.games.find((x) => x.id === el.dataset.game);
     const row = $(".row", el);
-    const key = JSON.stringify([g.installed, g.running, g.disc_missing, S.state.build.running, LANG]);
+    const key = JSON.stringify([g.installed, g.running, g.disc_missing, g.outdated, S.state.build.running, LANG]);
     if (row.dataset.key === key) return;
     row.dataset.key = key;
     row.innerHTML = "";
@@ -161,6 +161,12 @@ function updateLibraryStatus() {
     set.onclick = () => openSheet(g.id);
     row.append(play, set);
     if (g.disc_missing) row.append(h(`<span class="status warn">${esc(t("lib.disc_missing"))}</span>`));
+    else if (g.outdated) {
+      const up = h(`<button class="btn btn-text update">${esc(t("lib.update"))}</button>`);
+      up.title = t("lib.update_tip");
+      up.onclick = () => show("setup");
+      row.append(up);
+    }
   });
 }
 
@@ -193,7 +199,7 @@ async function prefillInstalled() {
     if (!g.installed || S.picks[g.id] || !g.info || !g.info.cue) continue;
     try {
       const c = await api.identify(g.info.cue);
-      if (c.game_id === g.id) { S.picks[g.id] = c; S.include[g.id] = false; }
+      if (c.game_id === g.id) { S.picks[g.id] = c; S.include[g.id] = !!g.outdated; }
     } catch (e) { /* image moved: leave the slot empty */ }
   }
   if (S.step === 1) renderSlots();

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from . import discs, tools
-from .catalog import GAMES_BY_ID, Game
+from .catalog import GAMES_BY_ID, KIT_STAMP, Game
 
 NINJA_RE = re.compile(r"^\[(\d+)/(\d+)\]")
 
@@ -299,7 +299,8 @@ class BuildRunner:
         st.ensure_defaults(game, cue)
         data = load_installed()
         data[game.id] = {"cue": cue, "serial": chk.serial, "region": chk.region,
-                         "built": time.strftime("%Y-%m-%d %H:%M"), "framework": tools.FRAMEWORK_STAMP}
+                         "built": time.strftime("%Y-%m-%d %H:%M"), "framework": tools.FRAMEWORK_STAMP,
+                         "kit": KIT_STAMP}
         save_installed(data)
         self._set(job, "install", 1.0)
 

@@ -113,6 +113,7 @@ main { flex: 1; min-height: 0; display: flex; }
 .world .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .world .status { font-size: 14px; color: rgba(244,239,255,.8); }
 .world .status.warn { color: #ffd27a; }
+.world .btn-text.update { color: #ffd27a; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .world:not(.is-active) .row .btn-ghost { display: none; }
 
 /* ---------------- buttons ---------------- */
