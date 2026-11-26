@@ -37,4 +37,4 @@ Static recompilation with PSXRecomp (github.com/mstan/psxrecomp) and
 recomp-ui. Fonts: Fredoka and Atkinson Hyperlegible (SIL OFL 1.1).
 Licence: PolyForm Noncommercial 1.0.0 - no commercial use.
 Unofficial fan project, not affiliated with Sony, Insomniac or Activision.
-Source: https://github.com/leoncon99/Spyro-PAL-Triology
+Source: https://github.com/leoncon99/Spyro-Trilogy
