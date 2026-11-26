@@ -19,11 +19,11 @@ NINJA_RE = re.compile(r"^\[(\d+)/(\d+)\]")
 
 # Share of the whole job per stage (sums to 1).
 STAGES = [
-    ("verify", "Image prüfen", 0.06),
-    ("prepare", "Projekt vorbereiten", 0.02),
-    ("generate", "Spielcode übersetzen", 0.37),
-    ("build", "Kompilieren", 0.52),
-    ("install", "Fertigstellen", 0.03),
+    ("verify", "Verify image", 0.06),
+    ("prepare", "Prepare project", 0.02),
+    ("generate", "Translate game code", 0.37),
+    ("build", "Compile", 0.52),
+    ("install", "Finish", 0.03),
 ]
 
 

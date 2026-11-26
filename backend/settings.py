@@ -17,41 +17,41 @@ from .catalog import Game
 # kind: choice (value stored as given), bool, int
 SCHEMA: list[dict[str, Any]] = [
     {"id": "fullscreen", "section": "video", "key": "fullscreen", "kind": "choice", "default": 1,
-     "choices": [[0, "Fenster"], [1, "Vollbild (randlos)"], [2, "Exklusives Vollbild"]],
-     "label": "Anzeigemodus", "group": "display",
-     "help": "Randloses Vollbild wechselt am schnellsten zwischen Spiel und Desktop."},
+     "choices": [[0, "Windowed"], [1, "Fullscreen (borderless)"], [2, "Exclusive fullscreen"]],
+     "label": "Display mode", "group": "display",
+     "help": "Borderless fullscreen switches fastest between game and desktop."},
     {"id": "vsync", "section": "video", "key": "vsync", "kind": "choice", "default": "on",
-     "choices": [["on", "An"], ["adaptive", "Adaptiv"], ["off", "Aus (geringste Latenz)"]],
+     "choices": [["on", "On"], ["adaptive", "Adaptive"], ["off", "Off (lowest latency)"]],
      "label": "VSync", "group": "display",
-     "help": "Verhindert Bildrisse. „Aus“ reagiert minimal schneller, kann aber reißen."},
+     "help": "Prevents tearing. \"Off\" responds slightly faster but may tear."},
     {"id": "internal_resolution", "section": "video", "key": "internal_resolution", "kind": "choice",
      "default": "4x",
      "choices": [["1x", "Original (1×)"], ["2x", "2×"], ["3x", "3× (≈ 720p)"], ["4x", "4× (≈ 1080p)"],
-                 ["6x", "6× (≈ 1440p)"], ["8x", "8×"], ["9x", "9× (≈ 4K)"], ["display", "Wie Monitor"],
-                 ["auto", "Automatisch (dynamisch)"]],
-     "label": "Interne Auflösung", "group": "graphics",
-     "help": "Wie scharf die 3D-Welt berechnet wird. Höher = schärfer, braucht mehr Grafikleistung."},
+                 ["6x", "6× (≈ 1440p)"], ["8x", "8×"], ["9x", "9× (≈ 4K)"], ["display", "Match monitor"],
+                 ["auto", "Automatic (dynamic)"]],
+     "label": "Internal resolution", "group": "graphics",
+     "help": "How sharply the 3D world is rendered. Higher is sharper and needs more GPU power."},
     {"id": "antialiasing_mode", "section": "video", "key": "antialiasing_mode", "kind": "choice",
-     "default": "off", "choices": [["off", "Aus"], ["fxaa", "FXAA"], ["fxaa_hq", "FXAA (hohe Qualität)"]],
-     "label": "Kantenglättung", "group": "graphics", "help": "Glättet treppenartige Kanten."},
+     "default": "off", "choices": [["off", "Off"], ["fxaa", "FXAA"], ["fxaa_hq", "FXAA (high quality)"]],
+     "label": "Antialiasing", "group": "graphics", "help": "Smooths jagged edges."},
     {"id": "texture_filtering", "section": "video", "key": "texture_filtering", "kind": "choice",
      "default": "nearest",
-     "choices": [["nearest", "Original (scharf, pixelig)"], ["stable", "Weich (nur 3D-Welt)"],
-                 ["bilinear", "Weich (alles)"], ["xbr", "xBR (hochskaliert)"]],
-     "label": "Texturen", "group": "graphics",
-     "help": "„Weich (nur 3D-Welt)“ glättet Landschaft, lässt Schrift und Menüs aber scharf."},
+     "choices": [["nearest", "Original (sharp, pixelated)"], ["stable", "Smooth (3D world only)"],
+                 ["bilinear", "Smooth (everything)"], ["xbr", "xBR (upscaled)"]],
+     "label": "Textures", "group": "graphics",
+     "help": "\"Smooth (3D world only)\" smooths the landscape but keeps text and menus sharp."},
     {"id": "pgxp", "section": "video", "key": ["geometry_correction", "perspective_texturing"],
-     "kind": "bool", "default": False, "label": "Wackel-Korrektur (PGXP)", "group": "graphics",
-     "help": "Entfernt das PS1-typische Wackeln von Polygonen und verzerrte Texturen."},
+     "kind": "bool", "default": False, "label": "Wobble fix (PGXP)", "group": "graphics",
+     "help": "Removes the typical PS1 polygon wobble and warped textures."},
     {"id": "crt_filter", "section": "video", "key": "crt_filter", "kind": "choice", "default": "raw",
-     "choices": [["raw", "Aus (klares Bild)"], ["crt", "Röhrenfernseher"], ["composite", "Composite-Kabel"],
+     "choices": [["raw", "Off (clean picture)"], ["crt", "CRT TV"], ["composite", "Composite cable"],
                  ["trinitron", "Trinitron"]],
-     "label": "Retro-Bildschirm", "group": "retro",
-     "help": "Simuliert, wie das Spiel damals auf dem Fernseher aussah."},
+     "label": "Retro screen", "group": "retro",
+     "help": "Simulates how the game looked on a TV back then."},
     {"id": "scanlines", "section": "video", "key": "scanlines", "kind": "bool", "default": False,
-     "label": "Scanlines", "group": "retro", "help": "Dunkle Zeilen wie bei alten Fernsehern."},
+     "label": "Scanlines", "group": "retro", "help": "Dark lines like on old TVs."},
     {"id": "volume", "section": "audio", "key": "volume", "kind": "int", "min": 0, "max": 100, "step": 5,
-     "default": 100, "label": "Lautstärke", "group": "sound", "help": ""},
+     "default": 100, "label": "Volume", "group": "sound", "help": ""},
 ]
 SCHEMA_BY_ID = {s["id"]: s for s in SCHEMA}
 
@@ -146,7 +146,7 @@ def _coerce(s: dict, value: Any) -> Any:
     for a in allowed:
         if str(a) == str(value):
             return a
-    raise ValueError(f"Ungültiger Wert für {s['label']}: {value}")
+    raise ValueError(f"Invalid value for {s['label']}: {value}")
 
 
 def _plain(v: Any) -> Any:

@@ -49,8 +49,8 @@ Data is stored in `%LOCALAPPDATA%\SpyroTrilogy`.
 Requires Python 3.11–3.13 (not 3.14, because of pythonnet).
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1            # EXE + ZIP in dist\
-powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1 -NurStarten # run directly
+powershell -ExecutionPolicy Bypass -File .\package.ps1          # EXE + ZIP in dist\
+powershell -ExecutionPolicy Bypass -File .\package.ps1 -RunOnly  # run directly
 ```
 
 ## Layout

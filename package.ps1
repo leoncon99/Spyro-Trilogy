@@ -1,17 +1,17 @@
-# PAKETIEREN.ps1 - baut "Spyro Trilogy" als eigenstaendiges Windows-Programm.
+# package.ps1 - builds "Spyro Trilogy" as a standalone Windows program.
 #
-# Ergebnis: dist\Spyro Trilogy\Spyro Trilogy.exe  (+ dist\SpyroTrilogy-<Version>.zip)
-# Aufruf im Ordner dieses Skripts:
-#   powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1
-# Testlauf ohne Paketieren:
-#   powershell -ExecutionPolicy Bypass -File .\PAKETIEREN.ps1 -NurStarten
+# Result: dist\Spyro Trilogy\Spyro Trilogy.exe  (+ dist\SpyroTrilogy-<version>.zip)
+# Run in this script's folder:
+#   powershell -ExecutionPolicy Bypass -File .\package.ps1
+# Test run without packaging:
+#   powershell -ExecutionPolicy Bypass -File .\package.ps1 -RunOnly
 
-param([switch]$NurStarten)
+param([switch]$RunOnly)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 function Find-Python {
-    # pywebview (pythonnet) braucht Python 3.11 bis 3.13.
+    # pywebview (pythonnet) needs Python 3.11 to 3.13.
     $ErrorActionPreference = "Continue"
     foreach ($v in @("3.13", "3.12", "3.11")) {
         $exe = & py "-$v" -c "import sys; print(sys.executable)" 2>$null
@@ -27,29 +27,29 @@ function Find-Python {
 if (-not (Test-Path .venv\Scripts\python.exe)) {
     $base = Find-Python
     if (-not $base) {
-        Write-Host "Kein passendes Python (3.11 bis 3.13) gefunden." -ForegroundColor Red
-        Write-Host "Gefundene Versionen:"
+        Write-Host "No suitable Python (3.11 to 3.13) found." -ForegroundColor Red
+        Write-Host "Installed versions:"
         & py -0p 2>$null
         Write-Host ""
-        Write-Host "Bitte Python 3.12 installieren und das Skript erneut starten:" -ForegroundColor Yellow
+        Write-Host "Please install Python 3.12 and run this script again:" -ForegroundColor Yellow
         Write-Host "  winget install Python.Python.3.12"
         exit 1
     }
-    Write-Host "Lege Python-Umgebung an mit $base ..." -ForegroundColor Cyan
+    Write-Host "Creating Python environment with $base ..." -ForegroundColor Cyan
     & $base -m venv .venv
-    if ($LASTEXITCODE -ne 0) { throw "venv konnte nicht angelegt werden" }
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the virtual environment" }
 }
 $py = ".venv\Scripts\python.exe"
 & $py -m pip install --upgrade pip --quiet
 & $py -m pip install --quiet "pywebview>=5.4" "tomlkit>=0.13" "pyinstaller>=6.10"
 
-if ($NurStarten) {
+if ($RunOnly) {
     & $py app.py
     exit $LASTEXITCODE
 }
 
 $version = (Select-String -Path backend\api.py -Pattern 'VERSION = "(.*)"').Matches[0].Groups[1].Value
-Write-Host "Paketiere Spyro Trilogy $version ..." -ForegroundColor Cyan
+Write-Host "Packaging Spyro Trilogy $version ..." -ForegroundColor Cyan
 & $py -m PyInstaller --noconfirm --clean --windowed `
     --name "Spyro Trilogy" `
     --icon assets\app.ico `
@@ -58,12 +58,12 @@ Write-Host "Paketiere Spyro Trilogy $version ..." -ForegroundColor Cyan
     --add-data "assets;assets" `
     --collect-all webview `
     app.py
-if ($LASTEXITCODE -ne 0) { throw "PyInstaller fehlgeschlagen" }
+if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 Copy-Item README.txt "dist\Spyro Trilogy\" -Force
 $zip = "dist\SpyroTrilogy-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "dist\Spyro Trilogy" -DestinationPath $zip
 Write-Host ""
-Write-Host "Fertig: dist\Spyro Trilogy\Spyro Trilogy.exe" -ForegroundColor Green
-Write-Host "        $zip"
+Write-Host "Done: dist\Spyro Trilogy\Spyro Trilogy.exe" -ForegroundColor Green
+Write-Host "      $zip"
