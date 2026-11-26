@@ -48,6 +48,7 @@ psxrecomp_add_game_runtime(psx-runtime
     MAX_PLAYERS 1
     # LAUNCHER_BOXART "${CMAKE_CURRENT_SOURCE_DIR}/launcher_assets/img/boxart.tga"
     APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/psxrecomp.ico"
+    LAUNCHER_THEME "${CMAKE_CURRENT_SOURCE_DIR}/assets/spyro/theme_game.ini"
     # Committed game C (psxrecomp_cli.py generate; git add generated). Release
     # CI configures with -DPSXRECOMP_REQUIRE_GAME_C=ON so a checkout without
     # it fails instead of building a setup host.
@@ -69,3 +70,11 @@ foreach(_PSX_RUNTIME_CONFIG game.toml game_options.toml)
             VERBATIM)
     endif()
 endforeach()
+
+# Spyro Trilogy assets (in-game menu font) next to the executable.
+add_custom_command(TARGET psx-runtime POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/spyro"
+        "$<TARGET_FILE_DIR:psx-runtime>/assets/spyro"
+    COMMENT "Staging Spyro Trilogy assets"
+    VERBATIM)

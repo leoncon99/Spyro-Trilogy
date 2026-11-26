@@ -187,8 +187,20 @@ function gotoStep(n) {
   });
 }
 
-function renderSetup() {
+async function prefillInstalled() {
+  /* Installed games: offer their known image so a rebuild is one checkbox away. */
+  for (const g of S.state.games) {
+    if (!g.installed || S.picks[g.id] || !g.info || !g.info.cue) continue;
+    try {
+      const c = await api.identify(g.info.cue);
+      if (c.game_id === g.id) { S.picks[g.id] = c; S.include[g.id] = false; }
+    } catch (e) { /* image moved: leave the slot empty */ }
+  }
   if (S.step === 1) renderSlots();
+}
+
+function renderSetup() {
+  if (S.step === 1) { renderSlots(); prefillInstalled(); }
   if (S.step === 2) renderJobs();
 }
 
@@ -209,7 +221,7 @@ function renderSlots() {
       check = `<p class="check info">${esc(t("slot.none"))}</p>`;
     }
     if (!ready) S.include[g.id] = false;
-    else if (S.include[g.id] === undefined) S.include[g.id] = true;
+    else if (S.include[g.id] === undefined) S.include[g.id] = !g.installed;
     const el = h(`
       <div class="slot ${ready ? (S.include[g.id] ? "is-ready" : "") : "is-empty"}" data-game="${g.id}">
         ${gem()}
@@ -235,7 +247,7 @@ function renderSlots() {
 function addPicks(list) {
   let added = 0, unknown = 0;
   for (const c of list) {
-    if (c.game_id) { S.picks[c.game_id] = c; S.include[c.game_id] = undefined; added++; }
+    if (c.game_id) { S.picks[c.game_id] = c; S.include[c.game_id] = c.ok && c.sbi !== "missing" && c.sbi !== "invalid"; added++; }
     else unknown++;
   }
   renderSlots();
@@ -318,8 +330,8 @@ async function openSheet(id) {
   $("#sheet .sheet-body").dataset.game = id;
   $("#sheet-title").textContent = g.title;
   $("#sheet-sub").textContent = g.info ? t("sheet.sub", g.info) : "";
-  const values = await api.get_settings(id);
-  renderSettings(values);
+  S.tab = S.tab || "game";
+  await showTab(S.tab);
   $("#sheet").hidden = false;
   $("#sheet .iconbtn").focus();
 }
@@ -362,7 +374,131 @@ async function save(id, value) {
   } catch (e) { toast(e.message); }
 }
 
-function closeSheet() { $("#sheet").hidden = true; S.sheetGame = null; }
+function closeSheet() { stopListening(); $("#sheet").hidden = true; S.sheetGame = null; }
+
+async function showTab(tab) {
+  S.tab = tab;
+  stopListening();
+  $$(".tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $$(".sheet-foot [data-for]").forEach((el) => (el.hidden = el.dataset.for !== tab));
+  if (tab === "game") renderSettings(await api.get_settings(S.sheetGame));
+  else renderControls(await api.get_controls(S.sheetGame));
+}
+
+/* ------------------------------------------------------------------ controls */
+const BUTTONS = ["up", "down", "left", "right", "cross", "circle", "square", "triangle",
+                 "l1", "r1", "l2", "r2", "start", "select", "l3", "r3"];
+const PS_GLYPH = { cross: "✕", circle: "○", square: "□", triangle: "△", up: "↑", down: "↓", left: "←", right: "→",
+                   l1: "L1", r1: "R1", l2: "L2", r2: "R2", l3: "L3", r3: "R3", start: "▶", select: "■" };
+/* KeyboardEvent.code -> SDL key name (what keybinds.ini expects) */
+function sdlKey(e) {
+  const c = e.code;
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit\d$/.test(c)) return c.slice(5);
+  if (/^F\d{1,2}$/.test(c)) return c;
+  if (/^Numpad\d$/.test(c)) return "Keypad " + c.slice(6);
+  const map = {
+    ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "Return", NumpadEnter: "Keypad Enter",
+    Space: "Space", Tab: "Tab", ShiftLeft: "Left Shift", ShiftRight: "Right Shift", ControlLeft: "Left Ctrl",
+    ControlRight: "Right Ctrl", AltLeft: "Left Alt", AltRight: "Right Alt", Backquote: "`", Minus: "-", Equal: "=",
+    BracketLeft: "[", BracketRight: "]", Backslash: "\\", Semicolon: ";", Quote: "'", Comma: ",", Period: ".",
+    Slash: "/", Insert: "Insert", Home: "Home", End: "End", PageUp: "PageUp", PageDown: "PageDown", CapsLock: "CapsLock",
+    NumpadAdd: "Keypad +", NumpadSubtract: "Keypad -", NumpadMultiply: "Keypad *", NumpadDivide: "Keypad /",
+  };
+  return map[c] || null;
+}
+const PAD_BUTTON = ["a", "b", "x", "y", "leftshoulder", "rightshoulder", "lefttrigger", "righttrigger",
+                    "back", "start", "leftstick", "rightstick", "dpup", "dpdown", "dpleft", "dpright"];
+const PAD_AXIS = [["leftx-", "leftx+"], ["lefty-", "lefty+"], ["rightx-", "rightx+"], ["righty-", "righty+"]];
+function padLabel(v) {
+  const names = { a: "A", b: "B", x: "X", y: "Y", leftshoulder: "LB", rightshoulder: "RB", lefttrigger: "LT",
+    righttrigger: "RT", back: "View", start: "Menu", leftstick: "LS", rightstick: "RS",
+    dpup: "✛ ↑", dpdown: "✛ ↓", dpleft: "✛ ←", dpright: "✛ →",
+    "leftx-": "LS ←", "leftx+": "LS →", "lefty-": "LS ↑", "lefty+": "LS ↓",
+    "rightx-": "RS ←", "rightx+": "RS →", "righty-": "RS ↑", "righty+": "RS ↓" };
+  return v.split(",").map((p) => p.trim()).map((p) => names[p] || names[p.replace(/[+-]$/, "")] || p).join(", ");
+}
+function keyLabel(v) {
+  const de = LANG === "de";
+  const names = { Return: "Enter", Up: "↑", Down: "↓", Left: "←", Right: "→",
+    "Right Shift": de ? "Shift rechts" : "Right Shift", "Left Shift": de ? "Shift links" : "Left Shift",
+    "Left Ctrl": de ? "Strg links" : "Left Ctrl", "Right Ctrl": de ? "Strg rechts" : "Right Ctrl",
+    Space: de ? "Leertaste" : "Space" };
+  return v.split(",").map((p) => p.trim()).map((p) => names[p] || p).join(", ");
+}
+
+function renderControls(binds) {
+  const box = $("#sheet-content");
+  box.innerHTML = `<p class="ctl-intro">${esc(t("ctl.intro"))}</p>
+    <table class="ctl-table"><thead><tr><th>${esc(t("ctl.button"))}</th><th>${esc(t("ctl.keyboard"))}</th>
+    <th>${esc(t("ctl.controller"))}</th></tr></thead><tbody></tbody></table>`;
+  const body = $("tbody", box);
+  for (const b of BUTTONS) {
+    const k = binds.keys[b] || "None", p = binds.pad[b] || "None";
+    const act = t("act." + b);
+    const cell = (dev, v) => {
+      const none = !v || v === "None";
+      return `<button class="bind ${none ? "is-none" : ""}" data-dev="${dev}" data-btn="${b}">${esc(none ? t("ctl.none") : dev === "keys" ? keyLabel(v) : padLabel(v))}</button>`;
+    };
+    body.append(h(`<tr><td><div class="ctl-name"><span class="ps ps-${b}">${PS_GLYPH[b]}</span>
+      <span>${esc(t("btn." + b))}${act ? `<small>${esc(act)}</small>` : ""}</span></div></td>
+      <td>${cell("keys", k)}</td><td>${cell("pad", p)}</td></tr>`));
+  }
+  $$(".bind", body).forEach((el) => (el.onclick = () => listen(el)));
+}
+
+let listening = null;
+function stopListening() {
+  if (!listening) return;
+  window.removeEventListener("keydown", listening.onKey, true);
+  cancelAnimationFrame(listening.raf);
+  listening = null;
+}
+function listen(el) {
+  stopListening();
+  const dev = el.dataset.dev, btn = el.dataset.btn;
+  el.classList.add("is-listening");
+  el.textContent = t(dev === "keys" ? "ctl.press_key" : "ctl.press_pad");
+  const finish = async (value) => {
+    stopListening();
+    if (value === undefined) return renderControls(await api.get_controls(S.sheetGame));
+    try {
+      renderControls(await api.set_control(S.sheetGame, dev, btn, value));
+      toast(t("ctl.saved"));
+    } catch (e) { toast(t("err.generic", { detail: e.message || e })); }
+  };
+  const onKey = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.code === "Escape") return finish(undefined);
+    if (e.code === "Delete" || e.code === "Backspace") return finish("None");
+    if (dev === "keys") { const k = sdlKey(e); if (k) finish(k); }
+  };
+  window.addEventListener("keydown", onKey, true);
+  const baseline = snapshotPad();
+  const poll = () => {
+    if (dev === "pad") {
+      const v = newPadInput(baseline);
+      if (v) return finish(v);
+    }
+    listening.raf = requestAnimationFrame(poll);
+  };
+  listening = { onKey, raf: requestAnimationFrame(poll) };
+}
+function snapshotPad() {
+  const pad = navigator.getGamepads ? [...navigator.getGamepads()].find(Boolean) : null;
+  return pad ? pad.buttons.map((b) => b.pressed) : [];
+}
+function newPadInput(baseline) {
+  const pad = navigator.getGamepads ? [...navigator.getGamepads()].find(Boolean) : null;
+  if (!pad) return null;
+  for (let i = 0; i < PAD_BUTTON.length; i++)
+    if (pad.buttons[i] && pad.buttons[i].pressed && !baseline[i]) return PAD_BUTTON[i];
+  for (let a = 0; a < 4; a++) {
+    const v = pad.axes[a] || 0;
+    if (Math.abs(v) > 0.7) return PAD_AXIS[a][v < 0 ? 0 : 1];
+  }
+  return null;
+}
 
 /* ------------------------------------------------------------------ dialogs */
 function confirmBox(title, text, yes) {
@@ -411,10 +547,9 @@ function wireStatic() {
   $("#btn-again").onclick = () => { gotoStep(1); renderSetup(); };
 
   $$("#sheet [data-close]").forEach((b) => (b.onclick = closeSheet));
-  $("#btn-advanced").onclick = async () => {
-    const r = await api.open_advanced(S.sheetGame);
-    toast(t(r.ok ? "sheet.advanced_open" : "sheet.quit_first"));
-  };
+  $$(".tabs [data-tab]").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+  $("#btn-ctl-all").onclick = async () => { await api.controls_to_all(S.sheetGame); toast(t("ctl.all_done")); };
+  $("#btn-ctl-reset").onclick = async () => { renderControls(await api.reset_controls(S.sheetGame)); toast(t("ctl.reset_done")); };
   $("#btn-saves").onclick = () => api.open_saves(S.sheetGame);
   $("#btn-all").onclick = async () => { await api.apply_to_all(S.sheetGame); toast(t("sheet.applied_all")); };
   $("#btn-reset").onclick = async () => { renderSettings(await api.reset_settings(S.sheetGame)); toast(t("sheet.reset_done")); };
@@ -428,7 +563,7 @@ function wireStatic() {
 
   document.addEventListener("keydown", (e) => {
     if (!$("#modal").hidden) { if (e.key === "Escape") $("#modal-no").click(); return; }
-    if (!$("#sheet").hidden) { if (e.key === "Escape") closeSheet(); return; }
+    if (!$("#sheet").hidden) { if (e.key === "Escape" && !listening) closeSheet(); return; }
     if (S.view !== "library" || e.target.matches("input, select")) return;
     const n = $$(".world").length;
     if (!n) return;
@@ -510,7 +645,7 @@ function pollGamepad() {
       const anyPressed = pad.buttons.some((b) => b && b.pressed) || pad.axes.some((a) => Math.abs(a) > 0.5);
       if (anyPressed && document.hasFocus()) setInput("pad");
       if (document.hasFocus()) {
-        if (!$("#sheet").hidden) { if (edge("b")) closeSheet(); }
+        if (!$("#sheet").hidden) { if (edge("b") && !listening) closeSheet(); }
         else if (S.view === "library") {
           const n = $$(".world").length;
           if (n && edge("right")) setActive((S.active + 1) % n);

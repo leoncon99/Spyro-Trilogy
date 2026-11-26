@@ -112,9 +112,11 @@ def ensure_python(progress: Optional[Progress] = None) -> Path:
 
 def ensure_framework(progress: Optional[Progress] = None) -> Path:
     """Assemble psxrecomp + recomp-ui (+ psxrecomp submodules) at the pins."""
+    from . import framework_patches
     root = framework_dir()
     marker = root / ".complete"
     if marker.exists():
+        framework_patches.apply(root)   # also upgrades an already downloaded framework
         return root
     tmp = root.with_name(root.name + ".partial")
     shutil.rmtree(tmp, ignore_errors=True)
@@ -139,6 +141,7 @@ def ensure_framework(progress: Optional[Progress] = None) -> Path:
             url = f"https://codeload.github.com/{repo}/zip/{sha}"
             blob = _download(url, sub, f"Framework: {name}")
             _extract_github_zip(blob, dest)
+    framework_patches.apply(tmp)
     shutil.rmtree(root, ignore_errors=True)
     tmp.rename(root)
     marker.write_text(FRAMEWORK_STAMP)

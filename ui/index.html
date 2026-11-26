@@ -105,14 +105,21 @@
       </div>
       <button class="iconbtn" data-close data-i18n-aria="sheet.close">✕</button>
     </header>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="game" aria-selected="true" data-i18n="tab.game"></button>
+      <button role="tab" data-tab="controls" aria-selected="false" data-i18n="tab.controls"></button>
+    </div>
     <div class="sheet-content" id="sheet-content"></div>
     <footer class="sheet-foot">
-      <div class="sheet-actions">
-        <button class="btn btn-ghost" id="btn-advanced" data-i18n="sheet.advanced"></button>
+      <div class="sheet-actions" data-for="game">
         <button class="btn btn-ghost" id="btn-saves" data-i18n="sheet.saves"></button>
         <button class="btn btn-ghost" id="btn-all" data-i18n="sheet.all"></button>
       </div>
-      <div class="sheet-actions danger">
+      <div class="sheet-actions" data-for="controls" hidden>
+        <button class="btn btn-ghost" id="btn-ctl-all" data-i18n="sheet.all"></button>
+        <button class="btn btn-text" id="btn-ctl-reset" data-i18n="sheet.reset"></button>
+      </div>
+      <div class="sheet-actions danger" data-for="game">
         <button class="btn btn-text" id="btn-reset" data-i18n="sheet.reset"></button>
         <button class="btn btn-text" id="btn-rebuild" data-i18n="sheet.rebuild"></button>
         <button class="btn btn-text" id="btn-remove" data-i18n="sheet.remove"></button>

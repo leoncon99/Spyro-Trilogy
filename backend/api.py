@@ -8,10 +8,10 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from . import builder, discs, settings, tools
+from . import builder, controls, discs, settings, tools
 from .catalog import GAMES, GAMES_BY_ID
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 class Api:
@@ -108,7 +108,7 @@ class Api:
         disc = settings.disc_path(g)
         if disc and not Path(disc).exists():
             return {"ok": False, "code": "launch.disc_missing", "disc_missing": True}
-        self._spawn(game_id, [str(exe), "--no-launcher"], exe.parent)
+        self._spawn(game_id, [str(exe), "--no-launcher"], exe.parent, bring_back=True)
         return {"ok": True}
 
     def open_advanced(self, game_id: str) -> dict:
@@ -132,6 +132,24 @@ class Api:
             if g.id != game_id and builder.product_exe(g).exists():
                 for k, v in src.items():
                     settings.set_value(g, k, v)
+        return True
+
+    def get_controls(self, game_id: str) -> dict:
+        return controls.get_all(GAMES_BY_ID[game_id])
+
+    def set_control(self, game_id: str, device: str, button: str, value: str) -> dict:
+        return controls.set_binding(GAMES_BY_ID[game_id], device, button, value)
+
+    def reset_controls(self, game_id: str) -> dict:
+        return controls.reset(GAMES_BY_ID[game_id])
+
+    def controls_to_all(self, game_id: str) -> bool:
+        src = controls.get_all(GAMES_BY_ID[game_id])
+        for g in GAMES:
+            if g.id != game_id and builder.product_exe(g).exists():
+                for device, binds in src.items():
+                    for button, value in binds.items():
+                        controls.set_binding(g, device, button, value)
         return True
 
     def reset_settings(self, game_id: str) -> dict:
@@ -173,13 +191,33 @@ class Api:
         return True
 
     # ---------------------------------------------------------- helpers
-    def _spawn(self, game_id: str, argv: list[str], cwd: Path) -> None:
+    def _spawn(self, game_id: str, argv: list[str], cwd: Path, bring_back: bool = False) -> None:
         flags = 0
         if tools.IS_WINDOWS:
             flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        env = dict(os.environ)
+        env["SPYRO_LANG"] = str(self.get_prefs().get("lang") or "")   # in-game menu language
         with self._lock:
-            self._procs[game_id] = subprocess.Popen(argv, cwd=cwd, creationflags=flags,
-                                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            proc = subprocess.Popen(argv, cwd=cwd, creationflags=flags, env=env,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._procs[game_id] = proc
+        if bring_back:
+            threading.Thread(target=self._bring_back_after, args=(proc,), daemon=True).start()
+
+    def _bring_back_after(self, proc: subprocess.Popen) -> None:
+        """When the game closes (also via "Back to library"), show Spyro Trilogy again."""
+        proc.wait()
+        w = self._window
+        if w is None:
+            return
+        try:
+            w.restore()
+            w.show()
+            w.on_top = True      # raise above other windows once ...
+            time.sleep(0.2)
+            w.on_top = False     # ... without staying on top
+        except Exception:  # noqa: BLE001 - cosmetic only
+            pass
 
     def _is_running(self, game_id: str) -> bool:
         with self._lock:
