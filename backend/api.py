@@ -176,7 +176,7 @@ class Api:
         if self._window is None:
             return []
         import webview
-        res = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
+        res = self._window.create_file_dialog(_dialog(webview, "OPEN"), allow_multiple=True,
                                              file_types=("PlayStation Image (*.cue)", "Alle Dateien (*.*)"))
         return list(res or [])
 
@@ -184,5 +184,13 @@ class Api:
         if self._window is None:
             return None
         import webview
-        res = self._window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._window.create_file_dialog(_dialog(webview, "FOLDER"))
         return res[0] if res else None
+
+
+def _dialog(webview, kind: str):
+    """FileDialog.OPEN / .FOLDER (pywebview 5+), else the old constants."""
+    fd = getattr(webview, "FileDialog", None)
+    if fd is not None and hasattr(fd, kind):
+        return getattr(fd, kind)
+    return getattr(webview, f"{kind}_DIALOG")
