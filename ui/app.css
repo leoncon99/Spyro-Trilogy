@@ -142,6 +142,9 @@ main { flex: 1; min-height: 0; display: flex; }
 }
 .hint span + span { margin-left: 18px; }
 .hint kbd[class^="pad-"] { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 12px; margin: 0 1px; }
+.hint .dpad { width: 22px; height: 22px; vertical-align: -6px; margin-right: 4px; }
+.hint .dpad-v, .hint .dpad-c { fill: rgba(255,255,255,.18); }
+.hint .dpad-h { fill: var(--gold); }
 .hint .pad-a { color: #6be38a; } .hint .pad-y { color: #ffd34d; }
 .hint .pad-x { color: #8fb2ff; } .hint .pad-t { color: #5fd6b8; }
 

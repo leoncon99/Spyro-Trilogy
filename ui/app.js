@@ -460,15 +460,23 @@ function setLang(lang, save = true) {
   if (S.sheetGame) openSheet(S.sheetGame);
 }
 
-/* ------------------------------------------------------------------ hint line */
-function padConnected() {
-  return navigator.getGamepads && [...navigator.getGamepads()].some(Boolean);
+/* ------------------------------------------------------------------ hint line
+ * Shows the controls of the device used last (keyboard/mouse or controller). */
+let lastInput = "keys";
+function setInput(kind) {
+  if (kind === lastInput) return;
+  lastInput = kind;
+  renderHint();
 }
+const DPAD = `<svg class="dpad" viewBox="0 0 24 24" aria-hidden="true">
+  <path class="dpad-v" d="M9 2h6v7h-6zM9 15h6v7h-6z"/>
+  <path class="dpad-h" d="M2 9h7v6h-7zM15 9h7v6h-7z"/>
+  <rect class="dpad-c" x="9" y="9" width="6" height="6"/></svg>`;
 function renderHint() {
   const el = $("#pad-hint");
   if (!el) return;
-  if (padConnected()) {
-    el.innerHTML = `<span><kbd>✛</kbd> ${esc(t("hint.choose"))}</span>`
+  if (lastInput === "pad") {
+    el.innerHTML = `<span>${DPAD} ${esc(t("hint.choose"))}</span>`
       + `<span><kbd class="pad-a">A</kbd><kbd class="pad-x">✕</kbd> ${esc(t("hint.play"))}</span>`
       + `<span><kbd class="pad-y">Y</kbd><kbd class="pad-t">△</kbd> ${esc(t("hint.settings"))}</span>`;
   } else {
@@ -476,8 +484,15 @@ function renderHint() {
       + `<span><kbd>Enter</kbd> ${esc(t("hint.play"))}</span><span><kbd>E</kbd> ${esc(t("hint.settings"))}</span>`;
   }
 }
-window.addEventListener("gamepadconnected", renderHint);
-window.addEventListener("gamepaddisconnected", renderHint);
+window.addEventListener("keydown", () => setInput("keys"), true);
+window.addEventListener("mousedown", () => setInput("keys"), true);
+window.addEventListener("wheel", () => setInput("keys"), { passive: true, capture: true });
+let lastMouse = null;
+window.addEventListener("mousemove", (e) => {
+  // ignore tiny jitter; a real move switches back to keyboard/mouse hints
+  if (lastMouse && Math.hypot(e.clientX - lastMouse[0], e.clientY - lastMouse[1]) > 24) setInput("keys");
+  lastMouse = [e.clientX, e.clientY];
+}, true);
 
 /* ------------------------------------------------------------------ gamepad */
 function pollGamepad() {
@@ -492,6 +507,8 @@ function pollGamepad() {
       };
       const was = prev[pad.index] || {};
       const edge = (k) => now[k] && !was[k];
+      const anyPressed = pad.buttons.some((b) => b && b.pressed) || pad.axes.some((a) => Math.abs(a) > 0.5);
+      if (anyPressed && document.hasFocus()) setInput("pad");
       if (document.hasFocus()) {
         if (!$("#sheet").hidden) { if (edge("b")) closeSheet(); }
         else if (S.view === "library") {
