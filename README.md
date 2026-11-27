@@ -9,6 +9,8 @@ through static recompilation ([PSXRecomp](https://github.com/mstan/psxrecomp)),
 and launches them. This repository contains **no game data, no game code and
 no prebuilt games** – everything is created on your PC from your images.
 
+![Library](docs/screenshots/library.png)
+
 ## Features
 
 - **Guided setup:** pick your images (or a folder). The app identifies and
@@ -23,6 +25,12 @@ no prebuilt games** – everything is created on your PC from your images.
 - **Updates from inside the app:** checks GitHub for a new release on start,
   downloads it (checksum-verified) and restarts into it. Can be switched off.
 - **Languages:** English and German.
+
+## Screenshots
+
+| Setup | Building |
+|---|---|
+| ![Choosing disc images](docs/screenshots/setup.png) | ![Building the games](docs/screenshots/building.png) |
 
 ## Supported discs
 
