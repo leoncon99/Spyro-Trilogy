@@ -53,7 +53,7 @@ FRAMEWORK_STAMP = "-".join(v[1][:8] for v in FRAMEWORK.values())
 
 # Bump when the game-side files (kits/, framework patches) change, so the app
 # offers to rebuild games built with an older state.
-KIT_STAMP = "5"
+KIT_STAMP = "6"
 
 # Python used to run the framework's build tools on Windows. The NuGet package
 # is the official python.org build in a normal (non-embedded) layout, so

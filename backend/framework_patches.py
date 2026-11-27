@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-PATCH_LEVEL = "spyro-patches-5"
+PATCH_LEVEL = "spyro-patches-6"
 
 _RT = "recomp-ui/src/common/backends/imgui/runtime_ui_imgui.cpp"
 
@@ -172,6 +172,161 @@ PATCHES += [
      '                                     : 1000.0 / PSX_FRAME_PERIOD_MS;'),
     (_MAIN, '        ? 1000.0 / 50.0\n        : PSX_FRAME_PERIOD_MS;',
      '        ? 1000.0 * PSX_VBLANK_CYCLES_PAL / 33868800.0\n        : PSX_FRAME_PERIOD_MS;'),
+]
+
+# Level 6: the in-game menu's look rows (internal resolution, PGXP, CRT filter,
+# scanlines, smoothing, texture filtering) still pointed at the built-in
+# "setting mods" the framework retired into settings.toml, so they all showed
+# "unavailable". They now read and write the player settings: internal
+# resolution applies live, the others are saved and apply with the quick
+# restart when the menu closes (as the framework intends for these rows).
+_L6_ROWS_OLD = """        {kOvlIresPkg, "internal-resolution", "resolution", kOvlIres, 7},
+        {kOvlPgxp, "pgxp", nullptr, nullptr, 2},
+        {kOvlCrt, "crt-filter", nullptr, nullptr, 2},
+        {nullptr, nullptr, nullptr, nullptr, 3},  /* antialiasing: runtime */
+        {kOvlCrt, "crt-filter", "scanlines", kOvlOnOff, 2},
+        {kOvlImage, "image-filtering", "smoothing", kOvlSmooth, 3},
+        {kOvlImage, "image-filtering", "texture_filtering", kOvlTexture, 4},"""
+_L6_ROWS_NEW = """        /* Spyro Trilogy: all player settings now (spyro_look_get/set). */
+        {nullptr, nullptr, nullptr, kOvlIres, 7},
+        {nullptr, nullptr, nullptr, nullptr, 2},
+        {nullptr, nullptr, nullptr, nullptr, 2},
+        {nullptr, nullptr, nullptr, nullptr, 3},  /* antialiasing: runtime */
+        {nullptr, nullptr, nullptr, kOvlOnOff, 2},
+        {nullptr, nullptr, nullptr, kOvlSmooth, 3},
+        {nullptr, nullptr, nullptr, kOvlTexture, 4},"""
+_L6_HELPERS = """std::atomic<int> g_ovl_sess_aa{-1}, g_ovl_sess_dither{-1};
+/* ---- Spyro Trilogy: look rows on the player settings (settings.toml) ---- */
+std::atomic<int> g_spyro_sess_ires{-1};
+const int kSpyroIresScale[] = {1, 2, 3, 4, 5, 6, 8};
+std::string spyro_setting(const PSXRecompV4::UserSettings& us, const char* key) {
+    const auto it = us.extra_player_settings.find(key);
+    return it == us.extra_player_settings.end() ? std::string() : it->second;
+}
+bool spyro_saved_row(int setting) {
+    return setting == PSX_MENU_SESSION_PGXP || setting == PSX_MENU_SESSION_CRT_FILTER ||
+           setting == PSX_MENU_SESSION_SCANLINES || setting == PSX_MENU_SESSION_SMOOTHING ||
+           setting == PSX_MENU_SESSION_TEXTURE_FILTERING;
+}
+/* 1 = handled (value in *out), 0 = not one of ours. */
+int spyro_look_get(int setting, int* out) {
+    if (setting == PSX_MENU_SESSION_INTERNAL_RESOLUTION) {
+        const int scale = g_video_scale > 0 ? g_video_scale : 1;
+        int best = 0;
+        for (int i = 1; i < 7; ++i)
+            if (std::abs(kSpyroIresScale[i] - scale) < std::abs(kSpyroIresScale[best] - scale)) best = i;
+        *out = best;
+        return 1;
+    }
+    if (!spyro_saved_row(setting)) return 0;
+    PSXRecompV4::UserSettings us;
+    try {
+        if (!g_overlay_settings_path.empty()) us = PSXRecompV4::load_user_settings(g_overlay_settings_path);
+    } catch (...) {
+    }
+    switch (setting) {
+    case PSX_MENU_SESSION_PGXP: *out = spyro_setting(us, "video.geometry_correction") == "true"; break;
+    case PSX_MENU_SESSION_CRT_FILTER: {
+        const std::string v = spyro_setting(us, "video.crt_filter");
+        *out = !v.empty() && v != "raw";
+        break;
+    }
+    case PSX_MENU_SESSION_SCANLINES: *out = spyro_setting(us, "video.scanlines") == "true"; break;
+    case PSX_MENU_SESSION_SMOOTHING: {
+        const std::string v = spyro_setting(us, "video.antialiasing");
+        *out = v == "true" ? 1 : v == "false" ? 2 : 0;
+        break;
+    }
+    default: {
+        const std::string v = spyro_setting(us, "video.texture_filtering");
+        *out = v == "nearest" ? 1 : (v == "bilinear" || v == "stable") ? 2 : v == "xbr" ? 3 : 0;
+    }
+    }
+    return 1;
+}
+/* -1 = not ours; else the session_set result. */
+int spyro_look_set(int setting, int value) {
+    if (setting == PSX_MENU_SESSION_INTERNAL_RESOLUTION) {
+        if (value < 0 || value > 6) return 0;
+        g_spyro_sess_ires = value;              /* applied live on the main thread */
+        return 1;
+    }
+    if (!spyro_saved_row(setting)) return -1;
+    if (psx_netplay_active() || g_overlay_settings_path.empty()) return 0;
+    try {
+        PSXRecompV4::UserSettings us = PSXRecompV4::load_user_settings(g_overlay_settings_path);
+        auto& x = us.extra_player_settings;
+        switch (setting) {
+        case PSX_MENU_SESSION_PGXP:
+            x["video.geometry_correction"] = value ? "true" : "false";
+            x["video.perspective_texturing"] = value ? "true" : "false";
+            break;
+        case PSX_MENU_SESSION_CRT_FILTER: x["video.crt_filter"] = value ? "crt" : "raw"; break;
+        case PSX_MENU_SESSION_SCANLINES: x["video.scanlines"] = value ? "true" : "false"; break;
+        case PSX_MENU_SESSION_SMOOTHING:
+            if (value == 0) x.erase("video.antialiasing");
+            else x["video.antialiasing"] = value == 1 ? "true" : "false";
+            break;
+        default: {
+            static const char* const kTex[] = {nullptr, "nearest", "bilinear", "xbr"};
+            if (value < 0 || value > 3) return 0;
+            if (!kTex[value]) x.erase("video.texture_filtering");
+            else x["video.texture_filtering"] = kTex[value];
+        }
+        }
+        if (!PSXRecompV4::save_user_settings(g_overlay_settings_path, us)) return 0;
+    } catch (...) {
+        return 0;
+    }
+    return PSX_MENU_SESSION_AT_RESTART;
+}
+"""
+_L6_GET_OLD = """int ovl_look_get(int setting, int* out) {
+    if (!g_ovl_look_posted_init || !ovl_look_catalog_available(setting)) return 0;
+    const int posted = g_ovl_look_posted[setting].load();
+    if (posted >= 0) { *out = posted; return 1; }
+"""
+_L6_GET_NEW = _L6_GET_OLD + """    if (spyro_look_get(setting, out)) {
+        if (setting != PSX_MENU_SESSION_INTERNAL_RESOLUTION)
+            g_ovl_look_posted[setting] = *out;   /* read settings.toml once per session */
+        return 1;
+    }
+"""
+_L6_SET_OLD = """int ovl_look_set(int setting, int value) {
+    if (!g_ovl_look_posted_init || !ovl_look_catalog_available(setting)) return 0;
+    int rc = 1;
+"""
+_L6_SET_NEW = """int ovl_look_set(int setting, int value) {
+    if (!g_ovl_look_posted_init || !ovl_look_catalog_available(setting)) return 0;
+    {
+        const int spyro_rc = spyro_look_set(setting, value);
+        if (spyro_rc >= 0) {
+            if (spyro_rc && setting != PSX_MENU_SESSION_INTERNAL_RESOLUTION)
+                g_ovl_look_posted[setting] = value;
+            return spyro_rc;
+        }
+    }
+    int rc = 1;
+"""
+_L6_SVC_OLD = """void ovl_look_service(void) {
+    const int aa = g_ovl_sess_aa.exchange(-1);"""
+_L6_SVC_NEW = """void ovl_look_service(void) {
+    {
+        const int ires = g_spyro_sess_ires.exchange(-1);
+        if (ires >= 0 && ires < 7) {
+            PsxHostVideoSettings next;
+            psx_video_current(&next);
+            next.internal_resolution = PSX_IR_SCALE(kSpyroIresScale[ires]);
+            (void)psx_video_apply_live(&next);   /* applies now and saves settings.toml */
+        }
+    }
+    const int aa = g_ovl_sess_aa.exchange(-1);"""
+PATCHES += [
+    (_MAIN, _L6_ROWS_OLD, _L6_ROWS_NEW),
+    (_MAIN, "std::atomic<int> g_ovl_sess_aa{-1}, g_ovl_sess_dither{-1};\n", _L6_HELPERS),
+    (_MAIN, _L6_GET_OLD, _L6_GET_NEW),
+    (_MAIN, _L6_SET_OLD, _L6_SET_NEW),
+    (_MAIN, _L6_SVC_OLD, _L6_SVC_NEW),
 ]
 
 def apply(root: Path) -> None:
