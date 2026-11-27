@@ -30,8 +30,7 @@ from . import tools
 REPO = "leoncon99/Spyro-Recomp-Trilogy"
 # Developer override (tests): base URL that serves /repos/<repo>/releases/latest
 API_BASE = os.environ.get("SPYRO_UPDATE_API", "https://api.github.com").rstrip("/")
-# Release ZIP name (also accepts the pre-0.6.0 name SpyroTrilogy-<v>.zip).
-ASSET_RE = re.compile(r"^Spyro(?:Recomp)?Trilogy-(\d+(?:\.\d+)*)\.zip$")
+ASSET_RE = re.compile(r"^SpyroRecompTrilogy-(\d+(?:\.\d+)*)\.zip$")
 
 
 def parse_version(v: str) -> tuple[int, ...]:
