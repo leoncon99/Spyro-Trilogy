@@ -28,9 +28,9 @@ def data_dir() -> Path:
     if override:
         base = Path(override)
     elif IS_WINDOWS:
-        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "SpyroTrilogy"
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "SpyroRecompTrilogy"
     else:
-        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "SpyroTrilogy"
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "SpyroRecompTrilogy"
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -55,7 +55,7 @@ def python_exe() -> Path:
 # ---------------------------------------------------------------- downloads
 
 def _download(url: str, progress: Optional[Progress], label: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "SpyroTrilogy-Setup"})
+    req = urllib.request.Request(url, headers={"User-Agent": "SpyroRecompTrilogy-Setup"})
     ctx = ssl.create_default_context()
     with urllib.request.urlopen(req, context=ctx, timeout=60) as r:
         total = int(r.headers.get("Content-Length") or 0)

@@ -1,10 +1,6 @@
 # package.ps1 - builds "Spyro Recomp Trilogy" as a standalone Windows program.
 #
-# Result: dist\Spyro Trilogy\Spyro Trilogy.exe  (+ dist\SpyroTrilogy-<version>.zip)
-#
-# The EXE and ZIP keep the old "Spyro Trilogy" file names for now: the
-# updater in 0.5.x only accepts those. 0.6.0+ accepts the new names too, so
-# they can be switched to "Spyro Recomp Trilogy" in a later release.
+# Result: dist\Spyro Recomp Trilogy\Spyro Recomp Trilogy.exe  (+ dist\SpyroRecompTrilogy-<version>.zip)
 # Run in this script's folder:
 #   powershell -ExecutionPolicy Bypass -File .\package.ps1
 # Test run without packaging:
@@ -55,7 +51,7 @@ if ($RunOnly) {
 $version = (Select-String -Path backend\api.py -Pattern 'VERSION = "(.*)"').Matches[0].Groups[1].Value
 Write-Host "Packaging Spyro Recomp Trilogy $version ..." -ForegroundColor Cyan
 & $py -m PyInstaller --noconfirm --clean --windowed `
-    --name "Spyro Trilogy" `
+    --name "Spyro Recomp Trilogy" `
     --icon assets\app.ico `
     --add-data "ui;ui" `
     --add-data "kits;kits" `
@@ -64,15 +60,15 @@ Write-Host "Packaging Spyro Recomp Trilogy $version ..." -ForegroundColor Cyan
     app.py
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
-Copy-Item README.txt "dist\Spyro Trilogy\" -Force
-$zip = "dist\SpyroTrilogy-$version.zip"
+Copy-Item README.txt "dist\Spyro Recomp Trilogy\" -Force
+$zip = "dist\SpyroRecompTrilogy-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip }
-Compress-Archive -Path "dist\Spyro Trilogy" -DestinationPath $zip
+Compress-Archive -Path "dist\Spyro Recomp Trilogy" -DestinationPath $zip
 # Checksum for the in-app updater: upload BOTH files to the GitHub release.
 $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
-Set-Content -Path "$zip.sha256" -Value "$hash  SpyroTrilogy-$version.zip" -Encoding ascii -NoNewline
+Set-Content -Path "$zip.sha256" -Value "$hash  SpyroRecompTrilogy-$version.zip" -Encoding ascii -NoNewline
 Write-Host ""
-Write-Host "Done: dist\Spyro Trilogy\Spyro Trilogy.exe" -ForegroundColor Green
+Write-Host "Done: dist\Spyro Recomp Trilogy\Spyro Recomp Trilogy.exe" -ForegroundColor Green
 Write-Host "      $zip"
 Write-Host "      $zip.sha256"
 Write-Host ""

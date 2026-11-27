@@ -33,7 +33,7 @@ version and restarts the app. Saves, settings and built games are kept.
 
 Locations
 ---------
-  Everything lives in  %LOCALAPPDATA%\SpyroTrilogy
+  Everything lives in  %LOCALAPPDATA%\SpyroRecompTrilogy
   Saves:               ...\games\<game>\saves
   Build log:           ...\games\<game>\build.log
 

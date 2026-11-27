@@ -6,8 +6,8 @@ into a staging folder and hands over to a small PowerShell script, which waits
 for the app to exit, swaps the app folder and starts the new version.
 
 Player data (games, saves, settings) lives in data_dir() and is never touched.
-A release needs two assets: SpyroTrilogy-<version>.zip and
-SpyroTrilogy-<version>.zip.sha256 (package.ps1 makes both).
+A release needs two assets: SpyroRecompTrilogy-<version>.zip and
+SpyroRecompTrilogy-<version>.zip.sha256 (package.ps1 makes both).
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from . import tools
 REPO = "leoncon99/Spyro-Recomp-Trilogy"
 # Developer override (tests): base URL that serves /repos/<repo>/releases/latest
 API_BASE = os.environ.get("SPYRO_UPDATE_API", "https://api.github.com").rstrip("/")
-# Old name and new name of the release ZIP (the app was renamed in 0.6.0).
+# Release ZIP name (also accepts the pre-0.6.0 name SpyroTrilogy-<v>.zip).
 ASSET_RE = re.compile(r"^Spyro(?:Recomp)?Trilogy-(\d+(?:\.\d+)*)\.zip$")
 
 
@@ -49,7 +49,7 @@ def install_dir() -> Path:
 
 
 def _get(url: str, timeout: float = 15.0) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "SpyroTrilogy-Updater",
+    req = urllib.request.Request(url, headers={"User-Agent": "SpyroRecompTrilogy-Updater",
                                                "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=timeout) as r:
         return r.read()
@@ -180,7 +180,7 @@ def _writable(folder: Path) -> bool:
 
 
 def extract_app(blob: bytes, dest: Path) -> str:
-    """Unpack the release ZIP (one top folder, e.g. "Spyro Trilogy/") into dest.
+    """Unpack the release ZIP (one top folder, e.g. "Spyro Recomp Trilogy/") into dest.
 
     Windows' Compress-Archive may write backslashes as separators; both are
     accepted. Absolute paths and ".." are refused. Returns the EXE's name.

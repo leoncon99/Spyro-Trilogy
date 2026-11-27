@@ -52,7 +52,7 @@ Images as `.cue` + `.bin` (Redump dumps). For Spyro 2 and 3 the matching
    takes about 5–15 minutes to build.
 3. Click **Play** in the library.
 
-Data is stored in `%LOCALAPPDATA%\SpyroTrilogy`.
+Data is stored in `%LOCALAPPDATA%\SpyroRecompTrilogy`.
 
 ## Packaging it yourself (Windows)
 
@@ -65,8 +65,8 @@ powershell -ExecutionPolicy Bypass -File .\package.ps1 -RunOnly  # run directly
 
 ## Publishing a release
 
-`package.ps1` creates `dist\SpyroTrilogy-<version>.zip` and
-`dist\SpyroTrilogy-<version>.zip.sha256`. Attach **both** to the GitHub
+`package.ps1` creates `dist\SpyroRecompTrilogy-<version>.zip` and
+`dist\SpyroRecompTrilogy-<version>.zip.sha256`. Attach **both** to the GitHub
 release (tag `v<version>`): the in-app updater only installs a release whose
 checksum file is present. It follows the latest non-prerelease release.
 
