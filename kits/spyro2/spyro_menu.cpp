@@ -13,10 +13,18 @@
  * Opens with F10 / Ctrl+L, or Select + L3 on a controller.
  */
 #include "psx_menu_host.h"
+#if __has_include("savestate.h")
+#include "savestate.h"
+#define SPYRO_HAS_SAVESTATE 1
+#endif
 
+#include <atomic>
+#include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 #if defined(_WIN32)
@@ -184,7 +192,7 @@ const Entry kGerman[] = {
     {"Fine", "Fein"},
     {"Applies after the match", "Gilt nach dem Match"},
     {"Applies with a quick restart when you close the menu",
-     "Gilt nach kurzem Neustart beim Schließen des Menüs"},
+     "Wird beim Schließen übernommen: Das Spiel lädt kurz neu und macht genau hier weiter."},
     {"Unavailable online", "Online nicht verfügbar"},
     {"Online: the game keeps running", "Online: Das Spiel läuft weiter"},
 
@@ -210,6 +218,8 @@ const Entry kEnglish[] = {
     {"Close the game, open the launcher. Press twice.", "Quit the game and return to Spyro Trilogy. Press twice."},
     {"Press again for the launcher", "Press again to return to the library"},
     {"System", "Game"},
+    {"Applies with a quick restart when you close the menu",
+     "Applies when you close the menu: the game reloads briefly and continues right here."},
     /* identity: lets a status line cut at 48 bytes be found by its start */
     {"Press again to restart the game. Unsaved progress is lost.",
      "Press again to restart the game. Unsaved progress is lost."},
@@ -259,10 +269,80 @@ PsxMenuProvider g_provider;      // recomp-ui's provider with our attach
 const PsxMenuProvider *g_inner;  // recomp-ui's original
 PsxMenuHost g_host;              // the runtime's host with our exit policy
 void (*g_inner_exit)(int);
+int (*g_inner_session_set)(int, int);
+std::atomic<bool> g_cold_restart{false};  // "Restart game": a real reset
+std::atomic<bool> g_resume_busy{false};
+
+void set_env(const char *name, const char *value) {
+#if defined(_WIN32)
+    _putenv_s(name, value ? value : "");
+#else
+    if (value) setenv(name, value, 1); else unsetenv(name);
+#endif
+}
+
+int spyro_session_set(int setting, int value) {
+    const int rc = g_inner_session_set ? g_inner_session_set(setting, value) : 0;
+#if defined(PSX_MENU_HOST_HAS_LOOK_ROWS)
+    if (rc && setting == PSX_MENU_SESSION_RESTART_GAME && value == 1) g_cold_restart = true;
+#endif
+    return rc;
+}
+
+#if defined(SPYRO_HAS_SAVESTATE)
+/* A settings change that needs a restart: save the game to a reserved state
+ * slot, then restart into that state, so the player continues exactly where
+ * the menu was closed instead of at the boot screen. If saving fails, the
+ * restart happens as before. */
+constexpr int kResumeSlot = SAVESTATE_SLOTS - 1;
+void restart_with_resume() {
+    PSXSavestateStatus before{};
+    savestate_get_status(&before);
+    (void)savestate_take_save_failed();
+    char slot[8];
+    std::snprintf(slot, sizeof slot, "%d", kResumeSlot);
+    set_env("PSX_LOAD_SLOT", slot);              // read by the restarted game
+    if (!savestate_request_save(kResumeSlot)) {
+        set_env("PSX_LOAD_SLOT", nullptr);
+        g_inner_exit(PSX_MENU_EXIT_RELAUNCH);
+        return;
+    }
+    g_resume_busy = true;
+    std::thread([before]() {
+        bool ok = false;
+        for (int i = 0; i < 300; ++i) {          // the game saves within a frame or two
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            if (savestate_take_save_failed()) break;
+            PSXSavestateStatus s{};
+            savestate_get_status(&s);
+            if (s.generation != before.generation && !s.pending) {
+                ok = s.last_ok && s.last_slot == kResumeSlot;
+                break;
+            }
+        }
+        if (!ok) set_env("PSX_LOAD_SLOT", nullptr);
+        std::fprintf(stdout, "spyro: settings restart %s\n", ok ? "resumes from a save state" : "without a save state");
+        std::fflush(stdout);
+        g_resume_busy = false;
+        g_inner_exit(PSX_MENU_EXIT_RELAUNCH);
+    }).detach();
+}
+#endif
 
 void spyro_request_exit(int how) {
     /* Spyro Trilogy is the launcher: leaving the game returns to it. */
     if (how == PSX_MENU_EXIT_TO_FRONTEND) how = PSX_MENU_EXIT_QUIT;
+    if (how == PSX_MENU_EXIT_RELAUNCH) {
+        if (g_cold_restart.exchange(false)) {
+            set_env("PSX_LOAD_SLOT", nullptr);       // "Restart game" boots fresh
+        } else {
+#if defined(SPYRO_HAS_SAVESTATE)
+            if (g_resume_busy) return;
+            restart_with_resume();
+            return;
+#endif
+        }
+    }
     if (g_inner_exit) g_inner_exit(how);
 }
 
@@ -273,6 +353,8 @@ int spyro_attach(void *ctx, void *window, void *gl, const PsxMenuHost *host) {
     g_host = *host;
     g_inner_exit = host->request_exit;
     g_host.request_exit = spyro_request_exit;
+    g_inner_session_set = host->session_set;
+    if (host->session_set) g_host.session_set = spyro_session_set;
     return g_inner->attach(ctx, window, gl, &g_host);
 }
 

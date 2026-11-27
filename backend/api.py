@@ -20,6 +20,7 @@ class Api:
         self._runner = builder.BuildRunner(lambda snap: None)
         self._procs: dict[str, subprocess.Popen] = {}
         self._lock = threading.Lock()
+        self._restarting: set[str] = set()
         self._updater = updater.Updater(VERSION)
 
     # ------------------------------------------------------------- state
@@ -229,11 +230,23 @@ class Api:
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self._procs[game_id] = proc
         if bring_back:
-            threading.Thread(target=self._bring_back_after, args=(proc,), daemon=True).start()
+            threading.Thread(target=self._bring_back_after, args=(game_id, proc, Path(argv[0])),
+                             daemon=True).start()
 
-    def _bring_back_after(self, proc: subprocess.Popen) -> None:
-        """When the game closes (also via "Back to library"), show Spyro Trilogy again."""
+    def _bring_back_after(self, game_id: str, proc: subprocess.Popen, exe: Path) -> None:
+        """When the game closes (also via "Back to library"), show Spyro Trilogy again.
+
+        A settings change in the in-game menu restarts the game: the old
+        process starts a new one and exits. Wait for that one too, so the
+        library does not jump in front of the restarted game."""
         proc.wait()
+        self._restarting.add(game_id)
+        try:
+            time.sleep(2.0)
+            while _exe_running(exe):
+                time.sleep(1.0)
+        finally:
+            self._restarting.discard(game_id)
         w = self._window
         if w is None:
             return
@@ -249,14 +262,17 @@ class Api:
     def _is_running(self, game_id: str) -> bool:
         with self._lock:
             p = self._procs.get(game_id)
-            return bool(p and p.poll() is None)
+            if p and p.poll() is None:
+                return True
+        # restarted by its own in-game menu: _bring_back_after is watching it
+        return game_id in self._restarting
 
     def _file_dialog(self) -> list[str]:
         if self._window is None:
             return []
         import webview
         res = self._window.create_file_dialog(_dialog(webview, "OPEN"), allow_multiple=True,
-                                             file_types=("PlayStation Image (*.cue)", "Alle Dateien (*.*)"))
+                                             file_types=("PlayStation Image (*.cue)", "All files (*.*)"))
         return list(res or [])
 
     def _folder_dialog(self) -> Optional[str]:
@@ -273,3 +289,16 @@ def _dialog(webview, kind: str):
     if fd is not None and hasattr(fd, kind):
         return getattr(fd, kind)
     return getattr(webview, f"{kind}_DIALOG")
+
+
+def _exe_running(exe: Path) -> bool:
+    """Is a process of this game executable running (any instance)?"""
+    try:
+        if tools.IS_WINDOWS:
+            out = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {exe.name}", "/NH", "/FO", "CSV"],
+                                 capture_output=True, text=True, timeout=10,
+                                 creationflags=0x08000000).stdout   # CREATE_NO_WINDOW
+            return f'"{exe.name.lower()}"' in out.lower()
+        return subprocess.run(["pgrep", "-f", str(exe)], capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
