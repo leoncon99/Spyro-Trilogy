@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-PATCH_LEVEL = "spyro-patches-4"
+PATCH_LEVEL = "spyro-patches-5"
 
 _RT = "recomp-ui/src/common/backends/imgui/runtime_ui_imgui.cpp"
 
@@ -153,6 +153,26 @@ PATCHES += [
      'RECOMP_RUNTIME_UI_STANDARD_RESUME | RECOMP_RUNTIME_UI_STANDARD_QUIT;'),
 ]
 
+
+# Level 5: real PAL frame timing. The runtime ran PAL VBlank at exactly
+# 50.00 Hz (677376 CPU cycles); a real PAL PS1 runs 314 lines of 3406 dots at
+# 53.203425 MHz = 680823 CPU cycles (49.75 Hz). SPU and CD-ROM run on the CPU
+# clock, so VBlank was 0.5 % fast against them. Spyro 2 streams cutscene
+# speech into a two-half SPU ring and refills it on a VBlank schedule: the
+# 0.5 % drift made the refills overtake playback after about a minute
+# (rushed or repeated words, then silence). Host pacing follows the same
+# rate. NTSC timing is unchanged.
+_VT = "psxrecomp/runtime/include/psx_video_timing.h"
+_MAIN = "psxrecomp/runtime/src/main.cpp"
+PATCHES += [
+    (_VT, '#define PSX_VBLANK_CYCLES_PAL    677376u  /* 33.8688 MHz / 50 Hz */',
+     '#define PSX_VBLANK_CYCLES_PAL    680823u  /* real PAL: 314 x 3406 dots @ 53.203425 MHz = 49.75 Hz */'),
+    (_MAIN, '    return psx_video_timing_is_pal() ? 50.0 : 1000.0 / PSX_FRAME_PERIOD_MS;',
+     '    return psx_video_timing_is_pal() ? 33868800.0 / PSX_VBLANK_CYCLES_PAL\n'
+     '                                     : 1000.0 / PSX_FRAME_PERIOD_MS;'),
+    (_MAIN, '        ? 1000.0 / 50.0\n        : PSX_FRAME_PERIOD_MS;',
+     '        ? 1000.0 * PSX_VBLANK_CYCLES_PAL / 33868800.0\n        : PSX_FRAME_PERIOD_MS;'),
+]
 
 def apply(root: Path) -> None:
     """Apply all patches under the framework root (idempotent).

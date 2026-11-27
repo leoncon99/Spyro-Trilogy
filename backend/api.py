@@ -11,7 +11,7 @@ from typing import Any, Optional
 from . import builder, controls, discs, settings, tools
 from .catalog import GAMES, GAMES_BY_ID, KIT_STAMP
 
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 
 class Api:
