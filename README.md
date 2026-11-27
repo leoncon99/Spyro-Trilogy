@@ -32,6 +32,8 @@ no prebuilt games** – everything is created on your PC from your images.
 |---|---|
 | ![Choosing disc images](docs/screenshots/setup.png) | ![Building the games](docs/screenshots/building.png) |
 
+![In-game menu](docs/screenshots/ingame-menu.png)
+
 ## Supported discs
 
 | Game | Serial | Note |
