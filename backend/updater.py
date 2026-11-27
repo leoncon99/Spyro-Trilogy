@@ -27,11 +27,10 @@ from typing import Any, Optional
 
 from . import tools
 
-REPO = "leoncon99/Spyro-Recomp-Trilogy"
+REPO = "leoncon99/Spyro-Trilogy"
 # Developer override (tests): base URL that serves /repos/<repo>/releases/latest
 API_BASE = os.environ.get("SPYRO_UPDATE_API", "https://api.github.com").rstrip("/")
-# Old name and new name of the release ZIP (the app was renamed in 0.6.0).
-ASSET_RE = re.compile(r"^Spyro(?:Recomp)?Trilogy-(\d+(?:\.\d+)*)\.zip$")
+ASSET_RE = re.compile(r"^SpyroTrilogy-(\d+(?:\.\d+)*)\.zip$")
 
 
 def parse_version(v: str) -> tuple[int, ...]:
@@ -61,7 +60,7 @@ class Updater:
         self._lock = threading.Lock()
         self.state: dict[str, Any] = {"phase": "idle", "progress": 0.0, "error": None,
                                       "checked": False, "available": False, "info": None}
-        self._apply: Optional[tuple[Path, Path, str]] = None
+        self._apply: Optional[tuple[Path, Path]] = None
 
     # ------------------------------------------------------------ status
     def snapshot(self) -> dict[str, Any]:
@@ -128,7 +127,9 @@ class Updater:
 
             self._set(phase="verifying", progress=0.92)
             staged = work / "app"
-            exe_name = extract_app(blob, staged)   # may differ from ours after a rename
+            exe_name = extract_app(blob, staged)
+            if is_frozen() and exe_name.lower() != Path(sys.executable).name.lower():
+                raise _Fail("update.bad_package")
             self._set(progress=1.0)
 
             if not is_frozen():
@@ -137,7 +138,7 @@ class Updater:
             target = install_dir()
             if not _writable(target.parent):
                 raise _Fail("update.no_write")
-            self._apply = (staged, target, exe_name)
+            self._apply = (staged, target)
             self._set(phase="ready")
         except _Fail as e:
             self._set(phase="error", error=e.code)
@@ -148,13 +149,13 @@ class Updater:
         """Start the swap script and close the app. Returns False if not ready."""
         if not self._apply or not tools.IS_WINDOWS:
             return False
-        staged, target, exe_name = self._apply
+        staged, target = self._apply
         work = staged.parent
         script = work / "apply.ps1"
         script.write_text(APPLY_PS1, encoding="utf-8-sig")
         argv = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden",
                 "-File", str(script), "-ProcId", str(os.getpid()), "-Src", str(staged),
-                "-Dst", str(target), "-Exe", exe_name, "-Log", str(work / "update.log")]
+                "-Dst", str(target), "-Exe", Path(sys.executable).name, "-Log", str(work / "update.log")]
         flags = 0x08000000 | 0x00000200   # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
         subprocess.Popen(argv, cwd=str(work), creationflags=flags, close_fds=True)
         self._set(phase="applying")

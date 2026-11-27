@@ -1,10 +1,6 @@
-# package.ps1 - builds "Spyro Recomp Trilogy" as a standalone Windows program.
+# package.ps1 - builds "Spyro Trilogy" as a standalone Windows program.
 #
 # Result: dist\Spyro Trilogy\Spyro Trilogy.exe  (+ dist\SpyroTrilogy-<version>.zip)
-#
-# The EXE and ZIP keep the old "Spyro Trilogy" file names for now: the
-# updater in 0.5.x only accepts those. 0.6.0+ accepts the new names too, so
-# they can be switched to "Spyro Recomp Trilogy" in a later release.
 # Run in this script's folder:
 #   powershell -ExecutionPolicy Bypass -File .\package.ps1
 # Test run without packaging:
@@ -53,7 +49,7 @@ if ($RunOnly) {
 }
 
 $version = (Select-String -Path backend\api.py -Pattern 'VERSION = "(.*)"').Matches[0].Groups[1].Value
-Write-Host "Packaging Spyro Recomp Trilogy $version ..." -ForegroundColor Cyan
+Write-Host "Packaging Spyro Trilogy $version ..." -ForegroundColor Cyan
 & $py -m PyInstaller --noconfirm --clean --windowed `
     --name "Spyro Trilogy" `
     --icon assets\app.ico `

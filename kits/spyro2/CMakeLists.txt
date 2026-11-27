@@ -75,10 +75,10 @@ foreach(_PSX_RUNTIME_CONFIG game.toml game_options.toml)
     endif()
 endforeach()
 
-# Spyro Recomp Trilogy assets (in-game menu font) next to the executable.
+# Spyro Trilogy assets (in-game menu font) next to the executable.
 add_custom_command(TARGET psx-runtime POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/spyro"
         "$<TARGET_FILE_DIR:psx-runtime>/assets/spyro"
-    COMMENT "Staging Spyro Recomp Trilogy assets"
+    COMMENT "Staging Spyro Trilogy assets"
     VERBATIM)

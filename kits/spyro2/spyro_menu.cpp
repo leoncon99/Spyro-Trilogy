@@ -1,10 +1,10 @@
-/* spyro_menu.cpp -- in-game menu for the Spyro Recomp Trilogy ports.
+/* spyro_menu.cpp -- in-game menu for the Spyro Trilogy ports.
  *
  * 1. Registers recomp-ui's full in-game menu (psxrecomp only attaches it by
  *    default for multi-disc titles).
- * 2. Leaving the game returns to Spyro Recomp Trilogy (still open behind the game),
+ * 2. Leaving the game returns to Spyro Trilogy (still open behind the game),
  *    never to the framework's own launcher.
- * 3. Translates the menu. Language: SPYRO_LANG (set by Spyro Recomp Trilogy), else
+ * 3. Translates the menu. Language: SPYRO_LANG (set by Spyro Trilogy), else
  *    the system UI language, else English. Needs the Spyro framework patch
  *    that adds recomp_runtime_ui_translate.
  *
@@ -132,10 +132,10 @@ const Entry kGerman[] = {
     {"Reset the emulated machine.", "Die Konsole zurücksetzen."},
     {"Return to launcher", "Zurück zur Bibliothek"},
     {"Close the game, open the launcher. Press twice.",
-     "Spiel beenden und zurück zu Spyro Recomp Trilogy. Zweimal drücken."},
+     "Spiel beenden und zurück zu Spyro Trilogy. Zweimal drücken."},
     {"Press again for the launcher", "Erneut drücken, um zur Bibliothek zurückzukehren"},
     {"Quit game", "Spiel beenden"},
-    {"Close the game. Press twice.", "Spiel schließen und zurück zu Spyro Recomp Trilogy. Zweimal drücken."},
+    {"Close the game. Press twice.", "Spiel schließen und zurück zu Spyro Trilogy. Zweimal drücken."},
     {"Press again to quit", "Zum Beenden erneut drücken"},
     {"Restart game", "Spiel neu starten"},
     {"Reset the console: the game starts again from its boot screen. Unsaved progress is lost.",
@@ -215,7 +215,7 @@ const Entry kGerman[] = {
 const Entry kEnglish[] = {
     {"OPEN", "\u203A"},
     {"Return to launcher", "Back to library"},
-    {"Close the game, open the launcher. Press twice.", "Quit the game and return to Spyro Recomp Trilogy. Press twice."},
+    {"Close the game, open the launcher. Press twice.", "Quit the game and return to Spyro Trilogy. Press twice."},
     {"Press again for the launcher", "Press again to return to the library"},
     {"System", "Game"},
     {"Applies with a quick restart when you close the menu",
@@ -224,7 +224,7 @@ const Entry kEnglish[] = {
     {"Press again to restart the game. Unsaved progress is lost.",
      "Press again to restart the game. Unsaved progress is lost."},
     {"Press again to return to the library", "Press again to return to the library"},
-    {"Close the game. Press twice.", "Quit the game and return to Spyro Recomp Trilogy. Press twice."},
+    {"Close the game. Press twice.", "Quit the game and return to Spyro Trilogy. Press twice."},
 };
 
 std::unordered_map<std::string, const char *> g_table;
@@ -330,7 +330,7 @@ void restart_with_resume() {
 #endif
 
 void spyro_request_exit(int how) {
-    /* Spyro Recomp Trilogy is the launcher: leaving the game returns to it. */
+    /* Spyro Trilogy is the launcher: leaving the game returns to it. */
     if (how == PSX_MENU_EXIT_TO_FRONTEND) how = PSX_MENU_EXIT_QUIT;
     if (how == PSX_MENU_EXIT_RELAUNCH) {
         if (g_cold_restart.exchange(false)) {

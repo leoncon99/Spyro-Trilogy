@@ -1,4 +1,4 @@
-/* spyro_menu_ui.cpp -- the in-game menu, drawn in Spyro Recomp Trilogy's style.
+/* spyro_menu_ui.cpp -- the in-game menu, drawn in Spyro Trilogy's style.
  *
  * recomp-ui keeps the menu's model (sections, rows, values, navigation,
  * saving); this file only draws it, with Dear ImGui, to match the Spyro

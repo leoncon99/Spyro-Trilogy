@@ -1,9 +1,9 @@
-# Spyro Recomp Trilogy
+# Spyro Trilogy
 
 Native PC ports of the three PlayStation Spyro games (PAL/Europe) – **no
 emulation**, built from **your own** discs.
 
-Spyro Recomp Trilogy is a Windows app that turns disc images of Spyro the Dragon,
+Spyro Trilogy is a Windows app that turns disc images of Spyro the Dragon,
 Spyro 2: Gateway to Glimmer and Spyro: Year of the Dragon into native PC games
 through static recompilation ([PSXRecomp](https://github.com/mstan/psxrecomp)),
 and launches them. This repository contains **no game data, no game code and
@@ -46,7 +46,7 @@ Images as `.cue` + `.bin` (Redump dumps). For Spyro 2 and 3 the matching
 ## Usage
 
 1. Download the app (Releases) or package it yourself (see below).
-2. Run `Spyro Recomp Trilogy.exe` → **Start setup** → choose your images →
+2. Run `Spyro Trilogy.exe` → **Start setup** → choose your images →
    **Build games**. On first use the app downloads its tools once (Python,
    Clang/CMake, the PSXRecomp framework, about 400 MB). After that each game
    takes about 5–15 minutes to build.
@@ -82,7 +82,7 @@ checksum file is present. It follows the latest non-prerelease release.
 
 ## Licences and notes
 
-- Spyro Recomp Trilogy is licensed under the **PolyForm Noncommercial License 1.0.0**
+- Spyro Trilogy is licensed under the **PolyForm Noncommercial License 1.0.0**
   (see `LICENSE`): you may use, modify and share it, but not commercially. The
   fonts are excluded (own licence, see below).
 - PSXRecomp is also licensed under the PolyForm Noncommercial License 1.0.0.
