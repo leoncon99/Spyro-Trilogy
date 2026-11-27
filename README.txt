@@ -28,7 +28,7 @@ In game
 Locations
 ---------
   Everything lives in  %LOCALAPPDATA%\SpyroTrilogy
-  Saves:               ...\games\<game>\project\build-release\saves
+  Saves:               ...\games\<game>\saves
   Build log:           ...\games\<game>\build.log
 
 Technology

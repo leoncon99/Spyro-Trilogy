@@ -53,6 +53,36 @@ def project_dir(game: Game) -> Path:
     return game_root(game) / "project"
 
 
+def saves_dir(game: Game) -> Path:
+    """Memory cards live next to the project, never inside it, so a rebuild
+    (which deletes the project folder) can not touch them. The game is
+    started with --memcard-dir pointing here."""
+    return game_root(game) / "saves"
+
+
+def migrate_saves(game: Game) -> None:
+    """Move memory cards from where older versions kept them (the runtime's
+    default: <project>/saves, or <build-release>/saves) into saves_dir().
+    A card that already exists in saves_dir() is kept; the other copy is
+    kept beside it as <name>.old-<n> so nothing is ever overwritten."""
+    dst_root = saves_dir(game)
+    for old in (project_dir(game) / "saves", project_dir(game) / "build-release" / "saves"):
+        if not old.is_dir():
+            continue
+        for src in sorted(old.rglob("*")):
+            if not src.is_file():
+                continue
+            dst = dst_root / src.relative_to(old)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                n = 1
+                while dst.with_name(f"{dst.name}.old-{n}").exists():
+                    n += 1
+                dst = dst.with_name(f"{dst.name}.old-{n}")
+            shutil.move(str(src), str(dst))
+        shutil.rmtree(old, ignore_errors=True)
+
+
 def product_dir(game: Game) -> Path:
     return project_dir(game) / "build-release"
 
@@ -374,6 +404,7 @@ class BuildRunner:
 
     def _stash_player_files(self, game: Game) -> Path:
         """Move saves/settings out of the way while the project is rebuilt."""
+        migrate_saves(game)          # cards first: out of the project for good
         keep = game_root(game) / "keep"
         prod = product_dir(game)
         for name in ("saves", "settings.toml", "keybinds.ini", "input.ini", "config.ini", "mods/state.toml",

@@ -11,7 +11,7 @@ from typing import Any, Optional
 from . import builder, controls, discs, settings, tools
 from .catalog import GAMES, GAMES_BY_ID, KIT_STAMP
 
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 
 
 class Api:
@@ -109,7 +109,11 @@ class Api:
         disc = settings.disc_path(g)
         if disc and not Path(disc).exists():
             return {"ok": False, "code": "launch.disc_missing", "disc_missing": True}
-        self._spawn(game_id, [str(exe), "--no-launcher"], exe.parent, bring_back=True)
+        builder.migrate_saves(g)
+        saves = builder.saves_dir(g)
+        saves.mkdir(parents=True, exist_ok=True)
+        self._spawn(game_id, [str(exe), "--no-launcher", "--memcard-dir", str(saves)], exe.parent,
+                    bring_back=True)
         return {"ok": True}
 
     def open_advanced(self, game_id: str) -> dict:
@@ -157,7 +161,9 @@ class Api:
         return settings.reset(GAMES_BY_ID[game_id])
 
     def open_saves(self, game_id: str) -> None:
-        d = builder.product_dir(GAMES_BY_ID[game_id]) / "saves"
+        g = GAMES_BY_ID[game_id]
+        builder.migrate_saves(g)
+        d = builder.saves_dir(g)
         d.mkdir(parents=True, exist_ok=True)
         tools.open_folder(d)
 
@@ -170,7 +176,8 @@ class Api:
             return False
         import shutil
         root = builder.game_root(g)
-        saves = builder.product_dir(g) / "saves"
+        builder.migrate_saves(g)
+        saves = builder.saves_dir(g)
         backup = tools.data_dir() / "saves-backup" / g.id / time.strftime("%Y%m%d-%H%M%S")
         if saves.exists():
             backup.parent.mkdir(parents=True, exist_ok=True)
