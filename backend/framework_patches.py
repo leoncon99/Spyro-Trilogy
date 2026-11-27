@@ -114,7 +114,7 @@ PATCHES += [
 # Level 4: the game draws the whole in-game menu itself (spyro_menu.cpp, in the
 # app's style) and loads its own fonts; the provider remembers whether the
 # player last used a keyboard or a controller. "Return to launcher" goes: in
-# Spyro Trilogy it would do exactly what "Quit game" does.
+# Spyro Recomp Trilogy it would do exactly what "Quit game" does.
 _PSXPROV = "recomp-ui/src/consoles/psx/psx_menu_provider.cpp"
 PATCHES += [
     (_RT, 'float recomp_runtime_ui_font_size = 18.0f;\n}\n',

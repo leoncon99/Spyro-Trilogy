@@ -1,4 +1,4 @@
-"""Spyro Trilogy – launcher and setup for the native PC ports.
+"""Spyro Recomp Trilogy – launcher and setup for the native PC ports.
 
     python app.py            normal window (pywebview / WebView2)
     python app.py --serve    developer mode: UI on http://127.0.0.1:8765
@@ -62,7 +62,7 @@ def serve(port: int = 8765) -> None:
             self.wfile.write(data)
 
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"Spyro Trilogy UI: http://127.0.0.1:{port}", flush=True)
+    print(f"Spyro Recomp Trilogy UI: http://127.0.0.1:{port}", flush=True)
     srv.serve_forever()
 
 
@@ -73,7 +73,7 @@ def main() -> None:
     import webview
     api = Api()
     window = webview.create_window(
-        "Spyro Trilogy", str(UI_DIR / "index.html"), js_api=api,
+        "Spyro Recomp Trilogy", str(UI_DIR / "index.html"), js_api=api,
         width=1280, height=800, min_size=(1024, 680), background_color="#120a24")
     api._window = window
     webview.start(gui="edgechromium" if tools.IS_WINDOWS else None, debug="--debug" in sys.argv)

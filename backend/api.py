@@ -11,7 +11,7 @@ from typing import Any, Optional
 from . import builder, controls, discs, settings, tools, updater
 from .catalog import GAMES, GAMES_BY_ID, KIT_STAMP
 
-VERSION = "0.5.1"
+VERSION = "0.6.0"
 
 
 class Api:
@@ -234,7 +234,7 @@ class Api:
                              daemon=True).start()
 
     def _bring_back_after(self, game_id: str, proc: subprocess.Popen, exe: Path) -> None:
-        """When the game closes (also via "Back to library"), show Spyro Trilogy again.
+        """When the game closes (also via "Back to library"), show Spyro Recomp Trilogy again.
 
         A settings change in the in-game menu restarts the game: the old
         process starts a new one and exits. Wait for that one too, so the
