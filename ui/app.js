@@ -58,6 +58,7 @@ async function boot() {
   show(any ? "library" : "library");
   setInterval(tick, 700);
   pollGamepad();
+  updateInit();
 }
 
 async function refresh() {
@@ -77,6 +78,10 @@ async function tick() {
       if (!running && S.wasRunning) finishBuild();
     }
     if (S.view === "library") updateLibraryStatus();
+    if (U.s && (["downloading", "verifying", "applying"].includes(U.s.phase) || U.s.phase === "ready")) {
+      U.s = await api.update_state();
+      renderUpdate();
+    }
     S.wasRunning = running;
   } catch (e) { /* window closing */ }
 }
@@ -599,6 +604,7 @@ function setLang(lang, save = true) {
   if (S.view === "library") renderLibrary();
   if (S.view === "setup") { renderSetup(); if (S.step === 3) finishBuildTexts(); }
   if (S.sheetGame) openSheet(S.sheetGame);
+  renderUpdate();
 }
 
 /* ------------------------------------------------------------------ hint line
@@ -688,3 +694,114 @@ async function startWhenReady(attempt = 0) {
 }
 window.addEventListener("pywebviewready", () => startWhenReady());
 startWhenReady();
+
+
+/* ------------------------------------------------------------------ updates
+ * The backend asks GitHub for the latest release; the banner offers it,
+ * downloads it (checksum-verified) and restarts into the new version. */
+var U = { s: null };   // var: renderUpdate may run before this line (language switch)
+
+async function updateInit() {
+  $("#btn-update-go").onclick = updateGo;
+  $("#btn-update-notes").onclick = openNotes;
+  $("#update-later").onclick = () => ($("#update-modal").hidden = true);
+  $("#update-now").onclick = () => { $("#update-modal").hidden = true; updateGo(); };
+  $("#btn-update-check").onclick = () => updateCheck(true);
+  $("#update-auto").onchange = (e) => api.set_pref("update_check", e.target.checked);
+  try {
+    U.s = await api.update_state();
+    $("#update-auto").checked = U.s.auto;
+    renderUpdate();
+    if (U.s.auto) await updateCheck(false);
+  } catch (e) { /* updates are optional */ }
+}
+
+async function updateCheck(manual) {
+  const btn = $("#btn-update-check");
+  btn.disabled = true;
+  try {
+    U.s = await api.update_check();
+    renderUpdate();
+    if (manual && !U.s.available)
+      toast(U.s.error ? t("update.check_failed") : t("update.latest", { v: U.s.current }));
+  } finally { btn.disabled = false; }
+}
+
+async function updateGo() {
+  if (!U.s) return;
+  if (U.s.phase === "ready") {
+    if (S.state && S.state.build.running) { toast(t("update.wait_build")); return; }
+    const ok = await api.update_apply();
+    if (!ok) toast(t("update.e.apply"));
+    U.s = await api.update_state();
+  } else {
+    U.s = await api.update_install();
+  }
+  renderUpdate();
+}
+
+function renderUpdate() {
+  const s = U ? U.s : null;
+  if (!s) return;
+  $("#app-version").textContent = t("update.version", { v: s.current });
+  const banner = $("#update-banner");
+  const v = s.info ? s.info.version : "";
+  const busy = s.phase === "downloading" || s.phase === "verifying";
+  const failed = s.phase === "error";
+  banner.hidden = !(s.available || busy || failed || s.phase === "ready" || s.phase === "applying");
+  if (banner.hidden) return;
+  banner.toggleAttribute("data-error", failed);
+  const go = $("#btn-update-go");
+  const bar = $("#update-bar");
+  bar.hidden = !busy;
+  bar.firstElementChild.style.width = `${Math.round((s.progress || 0) * 100)}%`;
+  go.hidden = false;
+  go.disabled = busy || s.phase === "applying";
+  $("#btn-update-notes").hidden = !s.info || !s.info.notes;
+  let title, sub;
+  if (busy) {
+    title = t("update.loading", { v }); sub = t("update.loading_sub"); go.textContent = t("update.install");
+  } else if (s.phase === "ready" && s.error === "update.dev") {
+    title = t("update.ready", { v }); sub = t("update.e.dev"); go.hidden = true;
+  } else if (s.phase === "ready") {
+    title = t("update.ready", { v }); sub = t("update.ready_sub"); go.textContent = t("update.restart");
+  } else if (s.phase === "applying") {
+    title = t("update.applying"); sub = t("update.applying_sub"); go.textContent = t("update.restart");
+  } else if (failed) {
+    title = t("update.failed"); sub = t(s.error.replace("update.", "update.e.")) || t("update.e.download_failed");
+    go.textContent = t("update.retry");
+  } else {
+    title = t("update.available", { v }); sub = t("update.available_sub", { cur: s.current });
+    go.textContent = t("update.install");
+    if (!s.can_install) { sub = t("update.e.dev"); go.hidden = true; }
+  }
+  $("#update-title").textContent = title;
+  $("#update-sub").textContent = sub;
+}
+
+/* Release notes: a small, safe subset of Markdown (headings, lists, bold, code). */
+function mdLite(src) {
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  let html = "", list = false;
+  for (const raw of String(src || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    const li = line.match(/^[-*] (.*)$/);
+    if (li) { if (!list) { html += "<ul>"; list = true; } html += `<li>${inline(li[1])}</li>`; continue; }
+    if (list) { html += "</ul>"; list = false; }
+    const hd = line.match(/^#{1,6} (.*)$/);
+    if (hd) html += `<h4>${inline(hd[1])}</h4>`;
+    else if (line) html += `<p>${inline(line)}</p>`;
+  }
+  return html + (list ? "</ul>" : "");
+}
+
+function openNotes() {
+  const s = U.s;
+  if (!s || !s.info) return;
+  $("#update-modal-title").textContent = t("update.notes_title", { v: s.info.version });
+  $("#update-notes").innerHTML = mdLite(s.info.notes);
+  const now = $("#update-now");
+  now.textContent = s.phase === "ready" ? t("update.restart") : t("update.install");
+  now.hidden = !s.can_install || s.phase === "downloading" || s.phase === "verifying" || s.phase === "applying";
+  $("#update-modal").hidden = false;
+}

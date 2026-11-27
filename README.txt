@@ -25,6 +25,12 @@ In game
   Menu (settings, quit):  F10  or  Ctrl+L  or controller Select + L3
   Toggle fullscreen:      Alt+Enter
 
+Updates
+-------
+The app checks for new versions on start (switch: "Automatically on start"
+at the bottom of the library). "Update" downloads and installs the new
+version and restarts the app. Saves, settings and built games are kept.
+
 Locations
 ---------
   Everything lives in  %LOCALAPPDATA%\SpyroTrilogy

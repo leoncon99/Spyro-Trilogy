@@ -20,6 +20,8 @@ no prebuilt games** – everything is created on your PC from your images.
   antialiasing, texture filtering, wobble fix (PGXP), CRT filter, volume, and
   keyboard and controller bindings.
 - **In-game menu** (F10 · Ctrl+L · Select+L3) in the app's style.
+- **Updates from inside the app:** checks GitHub for a new release on start,
+  downloads it (checksum-verified) and restarts into it. Can be switched off.
 - **Languages:** English and German.
 
 ## Supported discs
@@ -52,6 +54,13 @@ Requires Python 3.11–3.13 (not 3.14, because of pythonnet).
 powershell -ExecutionPolicy Bypass -File .\package.ps1          # EXE + ZIP in dist\
 powershell -ExecutionPolicy Bypass -File .\package.ps1 -RunOnly  # run directly
 ```
+
+## Publishing a release
+
+`package.ps1` creates `dist\SpyroTrilogy-<version>.zip` and
+`dist\SpyroTrilogy-<version>.zip.sha256`. Attach **both** to the GitHub
+release (tag `v<version>`): the in-app updater only installs a release whose
+checksum file is present. It follows the latest non-prerelease release.
 
 ## Layout
 

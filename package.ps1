@@ -64,6 +64,12 @@ Copy-Item README.txt "dist\Spyro Trilogy\" -Force
 $zip = "dist\SpyroTrilogy-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "dist\Spyro Trilogy" -DestinationPath $zip
+# Checksum for the in-app updater: upload BOTH files to the GitHub release.
+$hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
+Set-Content -Path "$zip.sha256" -Value "$hash  SpyroTrilogy-$version.zip" -Encoding ascii -NoNewline
 Write-Host ""
 Write-Host "Done: dist\Spyro Trilogy\Spyro Trilogy.exe" -ForegroundColor Green
 Write-Host "      $zip"
+Write-Host "      $zip.sha256"
+Write-Host ""
+Write-Host "For a GitHub release upload both files (the app updater needs the .sha256)." -ForegroundColor Yellow

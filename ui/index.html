@@ -38,8 +38,22 @@
 <main>
   <!-- ======================= LIBRARY ======================= -->
   <section id="view-library" class="view" data-i18n-aria="nav.library">
+    <div class="update-banner" id="update-banner" hidden role="status">
+      <svg class="update-gem" aria-hidden="true"><use href="#gem"/></svg>
+      <div class="update-text"><strong id="update-title"></strong><span id="update-sub"></span>
+        <div class="bar" id="update-bar" hidden><i></i></div></div>
+      <div class="update-actions">
+        <button class="btn btn-text" id="btn-update-notes" data-i18n="update.notes"></button>
+        <button class="btn btn-gold" id="btn-update-go"></button>
+      </div>
+    </div>
     <div class="worlds" id="worlds"></div>
     <p class="hint" id="pad-hint"></p>
+    <footer class="libfoot">
+      <span id="app-version"></span>
+      <button class="btn btn-text" id="btn-update-check" data-i18n="update.check"></button>
+      <label class="chk"><input type="checkbox" id="update-auto"><span data-i18n="update.auto"></span></label>
+    </footer>
   </section>
 
   <!-- ======================= SETUP ======================= -->
@@ -135,6 +149,17 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="modal-no" data-i18n="modal.cancel"></button>
       <button class="btn btn-gold" id="modal-yes"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="update-modal" hidden role="dialog" aria-modal="true" aria-labelledby="update-modal-title">
+  <div class="modal-card modal-wide">
+    <h2 id="update-modal-title"></h2>
+    <div class="notes" id="update-notes"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="update-later" data-i18n="update.later"></button>
+      <button class="btn btn-gold" id="update-now"></button>
     </div>
   </div>
 </div>

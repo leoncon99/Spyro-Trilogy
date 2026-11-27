@@ -8,10 +8,10 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from . import builder, controls, discs, settings, tools
+from . import builder, controls, discs, settings, tools, updater
 from .catalog import GAMES, GAMES_BY_ID, KIT_STAMP
 
-VERSION = "0.4.2"
+VERSION = "0.5.0"
 
 
 class Api:
@@ -20,6 +20,7 @@ class Api:
         self._runner = builder.BuildRunner(lambda snap: None)
         self._procs: dict[str, subprocess.Popen] = {}
         self._lock = threading.Lock()
+        self._updater = updater.Updater(VERSION)
 
     # ------------------------------------------------------------- state
     def get_state(self) -> dict[str, Any]:
@@ -49,6 +50,24 @@ class Api:
         }
 
     # ------------------------------------------------------------ prefs
+    # ----------------------------------------------------------- updates
+    def update_state(self) -> dict[str, Any]:
+        s = self._updater.snapshot()
+        s["auto"] = self.get_prefs().get("update_check", True) is not False
+        return s
+
+    def update_check(self) -> dict[str, Any]:
+        self._updater.check()
+        return self.update_state()
+
+    def update_install(self) -> dict[str, Any]:
+        self._updater.start_install()
+        return self.update_state()
+
+    def update_apply(self) -> bool:
+        """Swap in the downloaded version and restart (closes this window)."""
+        return self._updater.apply_and_exit(self._window)
+
     def get_prefs(self) -> dict:
         import json
         try:
