@@ -61,6 +61,17 @@ Write-Host "Packaging Spyro Recomp Trilogy $version ..." -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 Copy-Item README.txt "dist\Spyro Recomp Trilogy\" -Force
+# Lets .NET load the app's DLLs even if Windows marked them as downloaded
+# (second line of defence next to unblock_own_files() in app.py).
+$config = @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <runtime>
+    <loadFromRemoteSources enabled="true"/>
+  </runtime>
+</configuration>
+"@
+Set-Content -Path "dist\Spyro Recomp Trilogy\Spyro Recomp Trilogy.exe.config" -Value $config -Encoding utf8
 $zip = "dist\SpyroRecompTrilogy-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "dist\Spyro Recomp Trilogy" -DestinationPath $zip

@@ -15,6 +15,8 @@ How it works
    ImgBurn or a Redump tool). For Spyro 2 and 3 you also need the matching
    .sbi file (copy protection data) with the same name next to the .cue.
 2. Run "Spyro Recomp Trilogy.exe" and choose "Start setup".
+   If Windows shows "Windows protected your PC": click "More info" and then
+   "Run anyway". The app is not code-signed, so Windows doesn't know it yet.
 3. Choose the images (or the folder that holds them) and click "Build games".
    The first time, the tools are downloaded once (Python, compiler,
    framework - about 400 MB). After that each game takes about 5-15 minutes.

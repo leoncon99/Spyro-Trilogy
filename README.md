@@ -54,6 +54,10 @@ Images as `.cue` + `.bin` (Redump dumps). For Spyro 2 and 3 the matching
    takes about 5–15 minutes to build.
 3. Click **Play** in the library.
 
+If Windows shows **"Windows protected your PC"** (SmartScreen), click
+**More info** → **Run anyway**. The app is not code-signed, so Windows doesn't
+know it yet.
+
 Data is stored in `%LOCALAPPDATA%\SpyroRecompTrilogy`.
 
 ## Packaging it yourself (Windows)

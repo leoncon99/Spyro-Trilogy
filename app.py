@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -66,10 +67,30 @@ def serve(port: int = 8765) -> None:
     srv.serve_forever()
 
 
+def unblock_own_files() -> None:
+    """Remove the "downloaded from the internet" mark from the app's own files.
+
+    Windows Explorer copies this mark (the Zone.Identifier stream) from a
+    downloaded ZIP to every extracted file, and .NET then refuses to load
+    Python.Runtime.dll, so the window could not open. Only touches files
+    inside the app's own folder; errors are ignored.
+    """
+    if not (tools.IS_WINDOWS and getattr(sys, "frozen", False)):
+        return
+    root = Path(sys.executable).parent
+    for folder, _dirs, files in os.walk(root):
+        for name in files:
+            try:
+                os.remove(os.path.join(folder, name) + ":Zone.Identifier")
+            except OSError:
+                pass
+
+
 def main() -> None:
     if "--serve" in sys.argv:
         serve()
         return
+    unblock_own_files()
     import webview
     api = Api()
     window = webview.create_window(
